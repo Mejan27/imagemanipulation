@@ -1,0 +1,6 @@
+{
+  "name": "StockStudio Pro",
+  "description": "Multi-image stock media and asset compliance converter for Transparent PNG, Stock JPEG, Scalable SVG Vectors, and HD/4K Motion Videos.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

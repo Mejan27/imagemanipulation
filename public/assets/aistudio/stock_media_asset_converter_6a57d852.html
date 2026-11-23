@@ -1,0 +1,3021 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>StockStudio Pro — Stock Media & Asset Converter</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <!-- ImageTracer.js CDN with inline fallback support -->
+  <script src="https://cdn.jsdelivr.net/npm/imagetracerjs@1.2.6/imagetracer_v1.2.6.min.js"></script>
+  <!-- JSZip CDN for bulk ZIP downloading across all 4 sections -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: { sans: ['Inter', 'sans-serif'] },
+          colors: {
+            studio: {
+              950: '#090d16',
+              900: '#0f1624',
+              850: '#141d2f',
+              800: '#1c263b',
+              700: '#2a3752'
+            }
+          }
+        }
+      }
+    };
+  </script>
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+    }
+    /* Checkerboard transparency pattern */
+    .checkerboard {
+      background-color: #f1f5f9;
+      background-image:
+        linear-gradient(45deg, #cbd5e1 25%, transparent 25%),
+        linear-gradient(-45deg, #cbd5e1 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, #cbd5e1 75%),
+        linear-gradient(-45deg, transparent 75%, #cbd5e1 75%);
+      background-size: 20px 20px;
+      background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+    }
+    .dark .checkerboard {
+      background-color: #0f1624;
+      background-image:
+        linear-gradient(45deg, #1e293b 25%, transparent 25%),
+        linear-gradient(-45deg, #1e293b 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, #1e293b 75%),
+        linear-gradient(-45deg, transparent 75%, #1e293b 75%);
+      background-size: 20px 20px;
+      background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+    }
+    /* Custom range slider styling */
+    input[type="range"] {
+      -webkit-appearance: none;
+      appearance: none;
+      height: 6px;
+      border-radius: 999px;
+      background: #cbd5e1;
+      outline: none;
+    }
+    .dark input[type="range"] {
+      background: #2a3752;
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: #3b82f6;
+      cursor: pointer;
+      border: 2px solid #ffffff;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+    }
+    /* Hide scrollbar cleanly for horizontal tab strip on mobile */
+    .no-scrollbar::-webkit-scrollbar {
+      display: none;
+    }
+    .no-scrollbar {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-900 dark:bg-studio-950 dark:text-slate-100 min-h-screen flex flex-col selection:bg-blue-500 selection:text-white">
+
+  <!-- Toast Notification Container -->
+  <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2.5 max-w-sm w-full pointer-events-none px-4 sm:px-0"></div>
+
+  <!-- Top Navigation Header -->
+  <header class="sticky top-0 z-40 backdrop-blur-md bg-white/85 dark:bg-studio-900/85 border-b border-slate-200 dark:border-studio-800">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex items-center justify-between h-16 gap-4">
+        <!-- Brand -->
+        <div class="flex items-center gap-3 shrink-0">
+          <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 via-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-blue-500/20 text-white font-extrabold text-lg">
+            S
+          </div>
+          <div>
+            <div class="flex items-center gap-2">
+              <h1 class="text-base sm:text-lg font-extrabold tracking-tight">StockStudio Pro</h1>
+              <span class="hidden sm:inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                Batch Ready
+              </span>
+            </div>
+            <p class="text-[11px] text-slate-500 dark:text-slate-400 hidden sm:block">Multi-Image Stock Media &amp; Asset Compliance Converter</p>
+          </div>
+        </div>
+
+        <!-- Right Controls -->
+        <div class="flex items-center gap-2.5">
+          <button id="theme-toggle" type="button" title="Toggle Dark/Light Theme" class="p-2.5 rounded-xl bg-slate-100 dark:bg-studio-800 hover:bg-slate-200 dark:hover:bg-studio-700 text-slate-700 dark:text-slate-200 transition">
+            <i data-lucide="sun" id="icon-sun" class="w-4 h-4 hidden dark:block"></i>
+            <i data-lucide="moon" id="icon-moon" class="w-4 h-4 block dark:hidden"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- Four Separated Section Tabs -->
+      <nav aria-label="Converter Sections" class="flex items-center gap-2 pb-3 overflow-x-auto no-scrollbar">
+        <button onclick="switchTab('png')" id="tab-btn-png" class="tab-btn active flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold whitespace-nowrap transition bg-blue-600 text-white shadow-md shadow-blue-600/25">
+          <span class="w-2 h-2 rounded-full bg-white"></span>
+          <span>1. Transparent PNG</span>
+        </button>
+
+        <button onclick="switchTab('jpeg')" id="tab-btn-jpeg" class="tab-btn flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold whitespace-nowrap transition bg-slate-100 dark:bg-studio-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-studio-700">
+          <span class="w-2 h-2 rounded-full bg-indigo-400"></span>
+          <span>2. JPEG Images</span>
+        </button>
+
+        <button onclick="switchTab('svg')" id="tab-btn-svg" class="tab-btn flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold whitespace-nowrap transition bg-slate-100 dark:bg-studio-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-studio-700">
+          <span class="w-2 h-2 rounded-full bg-purple-400"></span>
+          <span>3. Vectors (SVG)</span>
+        </button>
+
+        <button onclick="switchTab('video')" id="tab-btn-video" class="tab-btn flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold whitespace-nowrap transition bg-slate-100 dark:bg-studio-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-studio-700">
+          <span class="w-2 h-2 rounded-full bg-rose-400"></span>
+          <span>4. Videos</span>
+        </button>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Main Content Container -->
+  <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+
+    <!-- ===================================================================== -->
+    <!-- SECTION 1: TRANSPARENT PNG                                            -->
+    <!-- ===================================================================== -->
+    <section id="section-png" class="tab-panel space-y-6">
+      <!-- Compliance Checklist Banner -->
+      <div class="bg-white dark:bg-studio-900 rounded-2xl border border-slate-200 dark:border-studio-800 p-4 sm:p-5 shadow-sm">
+        <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+          <div>
+            <div class="flex items-center gap-2">
+              <span class="px-2.5 py-0.5 rounded-md text-xs font-bold bg-blue-600/10 text-blue-600 dark:text-blue-400 border border-blue-600/20">SECTION 1</span>
+              <h2 class="text-base sm:text-lg font-bold tracking-tight">TRANSPARENT PNG CONVERTER</h2>
+            </div>
+            <p class="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-0.5">Removes solid backgrounds, enforces transparent alpha channel, scales between 4MP–100MP, and keeps file size &le; 45MB.</p>
+          </div>
+          <!-- Live Rule Badges -->
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+            <div id="png-rule-alpha" class="rule-badge flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-100 dark:bg-studio-850 border border-slate-200 dark:border-studio-700">
+              <span class="status-dot w-2.5 h-2.5 rounded-full bg-slate-400 shrink-0"></span>
+              <div>
+                <div class="font-semibold">Transparent BG</div>
+                <div id="png-rule-alpha-sub" class="text-[11px] text-slate-500 dark:text-slate-400">No background</div>
+              </div>
+            </div>
+            <div id="png-rule-format" class="rule-badge flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-100 dark:bg-studio-850 border border-slate-200 dark:border-studio-700">
+              <span class="status-dot w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0"></span>
+              <div>
+                <div class="font-semibold">PNG Format</div>
+                <div class="text-[11px] text-slate-500 dark:text-slate-400">PNG only (.png)</div>
+              </div>
+            </div>
+            <div id="png-rule-res" class="rule-badge flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-100 dark:bg-studio-850 border border-slate-200 dark:border-studio-700">
+              <span class="status-dot w-2.5 h-2.5 rounded-full bg-slate-400 shrink-0"></span>
+              <div>
+                <div class="font-semibold">4MP – 100MP</div>
+                <div id="png-rule-res-sub" class="text-[11px] text-slate-500 dark:text-slate-400">Auto-upscale &ge;4MP</div>
+              </div>
+            </div>
+            <div id="png-rule-size" class="rule-badge flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-100 dark:bg-studio-850 border border-slate-200 dark:border-studio-700">
+              <span class="status-dot w-2.5 h-2.5 rounded-full bg-slate-400 shrink-0"></span>
+              <div>
+                <div class="font-semibold">Max 45MB</div>
+                <div id="png-rule-size-sub" class="text-[11px] text-slate-500 dark:text-slate-400">Waiting for file</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Main Workspace Grid -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <!-- Left Controls Panel -->
+        <div class="lg:col-span-4 space-y-5">
+          <!-- Upload Dropzone -->
+          <div id="png-dropzone" class="group relative border-2 border-dashed border-slate-300 dark:border-studio-700 hover:border-blue-500 dark:hover:border-blue-500 rounded-2xl p-6 text-center bg-white dark:bg-studio-900 transition cursor-pointer">
+            <input type="file" id="png-file-input" accept="image/*" multiple class="hidden" />
+            <div class="w-12 h-12 mx-auto rounded-2xl bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 flex items-center justify-center mb-3 group-hover:scale-105 transition">
+              <i data-lucide="upload-cloud" class="w-6 h-6"></i>
+            </div>
+            <p class="text-sm font-semibold">Drop multiple images or <span class="text-blue-600 dark:text-blue-400 underline">browse</span></p>
+            <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Batch PNG, JPG, WEBP, BMP &rarr; Transparent PNG</p>
+            <div class="mt-3 flex items-center justify-center gap-2">
+              <button type="button" onclick="event.stopPropagation(); loadSampleAsset('png')" class="text-xs font-medium px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-studio-800 hover:bg-slate-200 dark:hover:bg-studio-700 text-slate-700 dark:text-slate-300 transition">
+                Load Demo Batch (3)
+              </button>
+              <button type="button" id="png-clear-batch" onclick="event.stopPropagation(); clearBatch('png')" class="hidden text-xs font-medium px-3 py-1.5 rounded-lg bg-rose-500/10 text-rose-600 dark:text-rose-400 hover:bg-rose-500/20 transition">
+                Clear All
+              </button>
+            </div>
+          </div>
+
+          <!-- Background Removal Settings -->
+          <div class="bg-white dark:bg-studio-900 rounded-2xl border border-slate-200 dark:border-studio-800 p-5 space-y-4">
+            <h3 class="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">1. Background Removal</h3>
+            
+            <div class="grid grid-cols-2 gap-2">
+              <button type="button" id="png-bg-mode-auto" onclick="setPngBgMode('auto')" class="px-3 py-2.5 rounded-xl text-xs font-semibold border border-blue-600 bg-blue-600/10 text-blue-600 dark:text-blue-400 transition">
+                Auto-Remove BG
+              </button>
+              <button type="button" id="png-bg-mode-keep" onclick="setPngBgMode('keep')" class="px-3 py-2.5 rounded-xl text-xs font-semibold border border-slate-200 dark:border-studio-700 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-studio-800 transition">
+                Keep Alpha Only
+              </button>
+            </div>
+
+            <div id="png-bg-controls" class="space-y-4 pt-1">
+              <div class="flex items-center justify-between gap-3">
+                <label class="text-xs font-medium text-slate-600 dark:text-slate-300">Target BG Color</label>
+                <div class="flex items-center gap-2">
+                  <button type="button" onclick="autoSampleCornerColor()" class="text-[11px] font-semibold px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-studio-800 hover:bg-slate-200 dark:hover:bg-studio-700 transition">
+                    Auto-Detect Corner
+                  </button>
+                  <input type="color" id="png-bg-color" value="#ffffff" class="w-8 h-8 rounded-lg border-0 bg-transparent cursor-pointer" />
+                </div>
+              </div>
+
+              <div>
+                <div class="flex justify-between text-xs mb-1">
+                  <span class="font-medium text-slate-600 dark:text-slate-300">Color Tolerance</span>
+                  <span id="png-tolerance-val" class="font-bold text-blue-600 dark:text-blue-400">28%</span>
+                </div>
+                <input type="range" id="png-tolerance" min="1" max="85" value="28" class="w-full" />
+              </div>
+
+              <div>
+                <div class="flex justify-between text-xs mb-1">
+                  <span class="font-medium text-slate-600 dark:text-slate-300">Smart Edge Feathering</span>
+                  <span id="png-feather-val" class="font-bold text-blue-600 dark:text-blue-400">12%</span>
+                </div>
+                <input type="range" id="png-feather" min="0" max="40" value="12" class="w-full" />
+              </div>
+
+              <label class="flex items-center gap-2.5 text-xs font-medium text-slate-600 dark:text-slate-300 cursor-pointer">
+                <input type="checkbox" id="png-contiguous" checked class="w-4 h-4 rounded text-blue-600 focus:ring-blue-500" />
+                <span>Flood-fill from outer edges only (protects inner details)</span>
+              </label>
+            </div>
+          </div>
+
+          <!-- Resolution & Output Settings -->
+          <div class="bg-white dark:bg-studio-900 rounded-2xl border border-slate-200 dark:border-studio-800 p-5 space-y-4">
+            <div class="flex items-center justify-between">
+              <h3 class="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">2. Target Resolution (4MP–100MP)</h3>
+              <span id="png-mp-badge" class="text-xs font-extrabold px-2.5 py-0.5 rounded-full bg-blue-600/10 text-blue-600 dark:text-blue-400">4.2 MP</span>
+            </div>
+
+            <div>
+              <input type="range" id="png-mp-slider" min="4.1" max="100" step="0.1" value="4.2" class="w-full" />
+              <div class="flex justify-between text-[11px] text-slate-400 mt-1">
+                <span>4.1 MP (Min)</span>
+                <span>50 MP</span>
+                <span>100 MP (Max)</span>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-4 gap-1.5">
+              <button type="button" onclick="setPngMP(4.2)" class="py-1.5 rounded-lg text-xs font-semibold bg-slate-100 dark:bg-studio-800 hover:bg-blue-600 hover:text-white transition">4.2 MP</button>
+              <button type="button" onclick="setPngMP(8.3)" class="py-1.5 rounded-lg text-xs font-semibold bg-slate-100 dark:bg-studio-800 hover:bg-blue-600 hover:text-white transition">8.3 MP</button>
+              <button type="button" onclick="setPngMP(16)" class="py-1.5 rounded-lg text-xs font-semibold bg-slate-100 dark:bg-studio-800 hover:bg-blue-600 hover:text-white transition">16 MP</button>
+              <button type="button" onclick="setPngMP(25)" class="py-1.5 rounded-lg text-xs font-semibold bg-slate-100 dark:bg-studio-800 hover:bg-blue-600 hover:text-white transition">25 MP</button>
+            </div>
+            <p class="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
+              Images below 4MP are automatically upscaled proportionally to &ge; 4.1MP. Supports 4.1MP up to 100MP with &le; 45MB file size verification.
+            </p>
+
+            <button id="png-process-btn" onclick="processPngBatch()" disabled class="w-full py-3 px-4 rounded-xl font-bold text-sm bg-blue-600 hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed text-white shadow-lg shadow-blue-600/20 transition flex items-center justify-center gap-2">
+              <i data-lucide="refresh-cw" class="w-4 h-4"></i>
+              <span id="png-process-label">Convert All to Transparent PNG</span>
+            </button>
+
+            <!-- Batch Progress Bar -->
+            <div id="png-batch-progress-wrap" class="hidden space-y-1.5 pt-1">
+              <div class="flex justify-between text-[11px] font-semibold">
+                <span id="png-batch-progress-text" class="text-blue-600 dark:text-blue-400">Processing 0 / 0...</span>
+                <span id="png-batch-progress-pct">0%</span>
+              </div>
+              <div class="w-full h-2 bg-slate-200 dark:bg-studio-800 rounded-full overflow-hidden">
+                <div id="png-batch-progress-bar" class="h-full bg-blue-600 transition-all duration-150" style="width: 0%"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right Preview & Export Panel -->
+        <div class="lg:col-span-8 flex flex-col gap-4">
+          <!-- Batch Queue Card -->
+          <div id="png-queue-card" class="hidden bg-white dark:bg-studio-900 rounded-2xl border border-slate-200 dark:border-studio-800 p-4 shadow-sm">
+            <div class="flex items-center justify-between mb-3">
+              <div class="flex items-center gap-2">
+                <span class="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">Batch Queue</span>
+                <span id="png-queue-count" class="text-xs font-bold px-2 py-0.5 rounded-full bg-blue-600/10 text-blue-600 dark:text-blue-400">0 files</span>
+              </div>
+              <span class="text-[11px] text-slate-500 dark:text-slate-400">Click any item to inspect preview</span>
+            </div>
+            <div id="png-queue-grid" class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2.5 max-h-[230px] overflow-y-auto pr-1"></div>
+          </div>
+
+          <div class="bg-white dark:bg-studio-900 rounded-2xl border border-slate-200 dark:border-studio-800 p-4 sm:p-5 flex-1 flex flex-col">
+            <div class="flex flex-wrap items-center justify-between gap-2 pb-3 mb-3 border-b border-slate-200 dark:border-studio-800">
+              <div class="flex items-center gap-2">
+                <span class="text-sm font-bold">Split Preview</span>
+                <span class="text-xs px-2 py-0.5 rounded-md bg-slate-100 dark:bg-studio-800 text-slate-500 dark:text-slate-400">Checkerboard = Transparent</span>
+              </div>
+              <div id="png-meta-bar" class="flex flex-wrap items-center gap-3 text-xs font-medium text-slate-500 dark:text-slate-400">
+                <span>Dimensions: <strong id="png-dim-out" class="text-slate-900 dark:text-white">—</strong></span>
+                <span>Resolution: <strong id="png-mp-out" class="text-slate-900 dark:text-white">—</strong></span>
+                <span>File Size: <strong id="png-size-out" class="text-slate-900 dark:text-white">—</strong></span>
+              </div>
+            </div>
+
+            <!-- Split Grid -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 flex-1 min-h-[340px]">
+              <div class="flex flex-col rounded-xl border border-slate-200 dark:border-studio-800 overflow-hidden bg-slate-100 dark:bg-studio-950">
+                <div class="px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider bg-slate-200/70 dark:bg-studio-850 text-slate-600 dark:text-slate-400 flex justify-between">
+                  <span>Original Source</span>
+                  <span id="png-orig-info">No file</span>
+                </div>
+                <div class="flex-1 flex items-center justify-center p-4 overflow-hidden">
+                  <canvas id="png-preview-orig" class="max-w-full max-h-[300px] object-contain rounded-lg shadow-sm"></canvas>
+                </div>
+              </div>
+
+              <div class="flex flex-col rounded-xl border border-slate-200 dark:border-studio-800 overflow-hidden checkerboard">
+                <div class="px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider bg-slate-200/90 dark:bg-studio-850/90 text-slate-700 dark:text-slate-300 flex justify-between">
+                  <span>Transparent PNG Output</span>
+                  <span id="png-alpha-badge" class="text-emerald-600 dark:text-emerald-400">Ready</span>
+                </div>
+                <div class="flex-1 flex items-center justify-center p-4 overflow-hidden relative">
+                  <canvas id="png-preview-out" class="max-w-full max-h-[300px] object-contain"></canvas>
+                </div>
+              </div>
+            </div>
+
+            <!-- Download Footer -->
+            <div class="mt-4 pt-4 border-t border-slate-200 dark:border-studio-800 flex flex-col sm:flex-row items-center justify-between gap-3">
+              <div id="png-status-msg" class="text-xs text-slate-500 dark:text-slate-400">
+                Upload one or multiple images to inspect transparency and megapixels.
+              </div>
+              <div class="flex flex-wrap items-center gap-2 w-full sm:w-auto justify-end">
+                <button id="png-download-btn" onclick="downloadPng()" disabled class="flex-1 sm:flex-initial py-2.5 px-4 rounded-xl font-bold text-xs sm:text-sm bg-slate-800 dark:bg-studio-800 hover:bg-slate-700 dark:hover:bg-studio-700 disabled:opacity-40 disabled:cursor-not-allowed text-white transition flex items-center justify-center gap-2">
+                  <i data-lucide="download" class="w-4 h-4"></i>
+                  <span>Download Selected</span>
+                </button>
+                <button id="png-zip-btn" onclick="downloadPngZip()" disabled class="flex-1 sm:flex-initial py-2.5 px-5 rounded-xl font-bold text-xs sm:text-sm bg-emerald-600 hover:bg-emerald-700 disabled:opacity-40 disabled:cursor-not-allowed text-white shadow-lg shadow-emerald-600/20 transition flex items-center justify-center gap-2">
+                  <i data-lucide="archive" class="w-4 h-4"></i>
+                  <span id="png-zip-label">Download All as ZIP</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================================================================== -->
+    <!-- SECTION 2: IMAGES (JPEG FILES)                                        -->
+    <!-- ===================================================================== -->
+    <section id="section-jpeg" class="tab-panel hidden space-y-6">
+      <!-- Compliance Checklist Banner -->
+      <div class="bg-white dark:bg-studio-900 rounded-2xl border border-slate-200 dark:border-studio-800 p-4 sm:p-5 shadow-sm">
+        <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+          <div>
+            <div class="flex items-center gap-2">
+              <span class="px-2.5 py-0.5 rounded-md text-xs font-bold bg-indigo-600/10 text-indigo-600 dark:text-indigo-400 border border-indigo-600/20">SECTION 2</span>
+              <h2 class="text-base sm:text-lg font-bold tracking-tight">IMAGES (JPEG FILES) CONVERTER</h2>
+            </div>
+            <p class="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-0.5">Flattens transparency onto pure white or custom matte, enforces 4MP–100MP resolution, and optimizes &le; 45MB JPEG output.</p>
+          </div>
+          <div class="grid grid-cols-3 gap-2 text-xs">
+            <div id="jpeg-rule-format" class="rule-badge flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-100 dark:bg-studio-850 border border-slate-200 dark:border-studio-700">
+              <span class="status-dot w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0"></span>
+              <div>
+                <div class="font-semibold">JPEG Format</div>
+                <div class="text-[11px] text-slate-500 dark:text-slate-400">JPEG only (.jpg)</div>
+              </div>
+            </div>
+            <div id="jpeg-rule-res" class="rule-badge flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-100 dark:bg-studio-850 border border-slate-200 dark:border-studio-700">
+              <span class="status-dot w-2.5 h-2.5 rounded-full bg-slate-400 shrink-0"></span>
+              <div>
+                <div class="font-semibold">4MP – 100MP</div>
+                <div id="jpeg-rule-res-sub" class="text-[11px] text-slate-500 dark:text-slate-400">Auto-upscale &ge;4MP</div>
+              </div>
+            </div>
+            <div id="jpeg-rule-size" class="rule-badge flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-100 dark:bg-studio-850 border border-slate-200 dark:border-studio-700">
+              <span class="status-dot w-2.5 h-2.5 rounded-full bg-slate-400 shrink-0"></span>
+              <div>
+                <div class="font-semibold">Max 45MB</div>
+                <div id="jpeg-rule-size-sub" class="text-[11px] text-slate-500 dark:text-slate-400">Waiting for file</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <!-- Left Controls -->
+        <div class="lg:col-span-4 space-y-5">
+          <div id="jpeg-dropzone" class="group relative border-2 border-dashed border-slate-300 dark:border-studio-700 hover:border-indigo-500 dark:hover:border-indigo-500 rounded-2xl p-6 text-center bg-white dark:bg-studio-900 transition cursor-pointer">
+            <input type="file" id="jpeg-file-input" accept="image/*" multiple class="hidden" />
+            <div class="w-12 h-12 mx-auto rounded-2xl bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 flex items-center justify-center mb-3 group-hover:scale-105 transition">
+              <i data-lucide="image" class="w-6 h-6"></i>
+            </div>
+            <p class="text-sm font-semibold">Drop multiple images or <span class="text-indigo-600 dark:text-indigo-400 underline">browse</span></p>
+            <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Batch converts PNG, WEBP, SVG, BMP &rarr; High-Res JPEG</p>
+            <div class="mt-3 flex items-center justify-center gap-2">
+              <button type="button" onclick="event.stopPropagation(); loadSampleAsset('jpeg')" class="text-xs font-medium px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-studio-800 hover:bg-slate-200 dark:hover:bg-studio-700 text-slate-700 dark:text-slate-300 transition">
+                Load Demo Batch (3)
+              </button>
+              <button type="button" id="jpeg-clear-batch" onclick="event.stopPropagation(); clearBatch('jpeg')" class="hidden text-xs font-medium px-3 py-1.5 rounded-lg bg-rose-500/10 text-rose-600 dark:text-rose-400 hover:bg-rose-500/20 transition">
+                Clear All
+              </button>
+            </div>
+          </div>
+
+          <!-- Target Resolution (4MP - 100MP) -->
+          <div class="bg-white dark:bg-studio-900 rounded-2xl border border-slate-200 dark:border-studio-800 p-5 space-y-4">
+            <div class="flex items-center justify-between">
+              <h3 class="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">1. Target Resolution (4MP–100MP)</h3>
+              <span id="jpeg-mp-badge" class="text-xs font-extrabold px-2.5 py-0.5 rounded-full bg-indigo-600/10 text-indigo-600 dark:text-indigo-400">4.2 MP</span>
+            </div>
+
+            <div>
+              <input type="range" id="jpeg-mp-slider" min="4.1" max="100" step="0.1" value="4.2" class="w-full" />
+              <div class="flex justify-between text-[11px] text-slate-400 mt-1">
+                <span>4.1 MP (Min)</span>
+                <span>50 MP</span>
+                <span>100 MP (Max)</span>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-4 gap-1.5">
+              <button type="button" onclick="setJpegMP(4.2)" class="py-1.5 rounded-lg text-xs font-semibold bg-slate-100 dark:bg-studio-800 hover:bg-indigo-600 hover:text-white transition">4.2 MP</button>
+              <button type="button" onclick="setJpegMP(12)" class="py-1.5 rounded-lg text-xs font-semibold bg-slate-100 dark:bg-studio-800 hover:bg-indigo-600 hover:text-white transition">12 MP</button>
+              <button type="button" onclick="setJpegMP(24)" class="py-1.5 rounded-lg text-xs font-semibold bg-slate-100 dark:bg-studio-800 hover:bg-indigo-600 hover:text-white transition">24 MP</button>
+              <button type="button" onclick="setJpegMP(48)" class="py-1.5 rounded-lg text-xs font-semibold bg-slate-100 dark:bg-studio-800 hover:bg-indigo-600 hover:text-white transition">48 MP</button>
+            </div>
+          </div>
+
+          <!-- Compression & Flatten -->
+          <div class="bg-white dark:bg-studio-900 rounded-2xl border border-slate-200 dark:border-studio-800 p-5 space-y-4">
+            <h3 class="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">2. Compression &amp; Flatten</h3>
+            <div>
+              <div class="flex justify-between text-xs mb-1">
+                <span class="font-medium text-slate-600 dark:text-slate-300">JPEG Quality</span>
+                <span id="jpeg-quality-val" class="font-bold text-indigo-600 dark:text-indigo-400">92%</span>
+              </div>
+              <input type="range" id="jpeg-quality" min="10" max="100" value="92" class="w-full" />
+            </div>
+
+            <div class="flex items-center justify-between text-xs">
+              <span class="text-slate-600 dark:text-slate-300 font-medium">Alpha Matte Fill Color</span>
+              <div class="flex items-center gap-2">
+                <span class="text-slate-400 text-[11px]">Default: Pure White</span>
+                <input type="color" id="jpeg-matte-color" value="#ffffff" class="w-7 h-7 rounded-md border-0 bg-transparent cursor-pointer" />
+              </div>
+            </div>
+
+            <button id="jpeg-process-btn" onclick="processJpegBatch()" disabled class="w-full py-3 px-4 rounded-xl font-bold text-sm bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed text-white shadow-lg shadow-indigo-600/20 transition flex items-center justify-center gap-2">
+              <i data-lucide="refresh-cw" class="w-4 h-4"></i>
+              <span id="jpeg-process-label">Convert All to Stock JPEG</span>
+            </button>
+
+            <!-- Batch Progress Bar -->
+            <div id="jpeg-batch-progress-wrap" class="hidden space-y-1.5 pt-1">
+              <div class="flex justify-between text-[11px] font-semibold">
+                <span id="jpeg-batch-progress-text" class="text-indigo-600 dark:text-indigo-400">Processing 0 / 0...</span>
+                <span id="jpeg-batch-progress-pct">0%</span>
+              </div>
+              <div class="w-full h-2 bg-slate-200 dark:bg-studio-800 rounded-full overflow-hidden">
+                <div id="jpeg-batch-progress-bar" class="h-full bg-indigo-600 transition-all duration-150" style="width: 0%"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right Preview -->
+        <div class="lg:col-span-8 flex flex-col gap-4">
+          <!-- Batch Queue Card -->
+          <div id="jpeg-queue-card" class="hidden bg-white dark:bg-studio-900 rounded-2xl border border-slate-200 dark:border-studio-800 p-4 shadow-sm">
+            <div class="flex items-center justify-between mb-3">
+              <div class="flex items-center gap-2">
+                <span class="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">JPEG Batch Queue</span>
+                <span id="jpeg-queue-count" class="text-xs font-bold px-2 py-0.5 rounded-full bg-indigo-600/10 text-indigo-600 dark:text-indigo-400">0 files</span>
+              </div>
+              <span class="text-[11px] text-slate-500 dark:text-slate-400">Click any item to inspect preview</span>
+            </div>
+            <div id="jpeg-queue-grid" class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2.5 max-h-[230px] overflow-y-auto pr-1"></div>
+          </div>
+
+          <div class="bg-white dark:bg-studio-900 rounded-2xl border border-slate-200 dark:border-studio-800 p-4 sm:p-5 flex-1 flex flex-col">
+            <div class="flex flex-wrap items-center justify-between gap-2 pb-3 mb-3 border-b border-slate-200 dark:border-studio-800">
+              <span class="text-sm font-bold">JPEG Output Preview</span>
+              <div class="flex flex-wrap items-center gap-3 text-xs font-medium text-slate-500 dark:text-slate-400">
+                <span>Dimensions: <strong id="jpeg-dim-out" class="text-slate-900 dark:text-white">—</strong></span>
+                <span>Resolution: <strong id="jpeg-mp-out" class="text-slate-900 dark:text-white">—</strong></span>
+                <span>File Size: <strong id="jpeg-size-out" class="text-slate-900 dark:text-white">—</strong></span>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 flex-1 min-h-[340px]">
+              <div class="flex flex-col rounded-xl border border-slate-200 dark:border-studio-800 overflow-hidden bg-slate-100 dark:bg-studio-950">
+                <div class="px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider bg-slate-200/70 dark:bg-studio-850 text-slate-600 dark:text-slate-400 flex justify-between">
+                  <span>Original Input</span>
+                  <span id="jpeg-orig-info">No file</span>
+                </div>
+                <div class="flex-1 flex items-center justify-center p-4">
+                  <canvas id="jpeg-preview-orig" class="max-w-full max-h-[300px] object-contain rounded-lg"></canvas>
+                </div>
+              </div>
+
+              <div class="flex flex-col rounded-xl border border-slate-200 dark:border-studio-800 overflow-hidden bg-slate-100 dark:bg-studio-950">
+                <div class="px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider bg-slate-200/70 dark:bg-studio-850 text-slate-600 dark:text-slate-400 flex justify-between">
+                  <span>Converted JPEG (.jpg)</span>
+                  <span id="jpeg-quality-badge" class="text-indigo-600 dark:text-indigo-400">Ready</span>
+                </div>
+                <div class="flex-1 flex items-center justify-center p-4">
+                  <img id="jpeg-preview-out" alt="JPEG Output" class="max-w-full max-h-[300px] object-contain rounded-lg hidden" />
+                  <span id="jpeg-placeholder-txt" class="text-xs text-slate-400">Converted preview appears here</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="mt-4 pt-4 border-t border-slate-200 dark:border-studio-800 flex flex-col sm:flex-row items-center justify-between gap-3">
+              <div id="jpeg-status-msg" class="text-xs text-slate-500 dark:text-slate-400">
+                Upload one or multiple images to convert to compliant &ge;4MP JPEG files.
+              </div>
+              <div class="flex flex-wrap items-center gap-2 w-full sm:w-auto justify-end">
+                <button id="jpeg-download-btn" onclick="downloadJpeg()" disabled class="flex-1 sm:flex-initial py-2.5 px-4 rounded-xl font-bold text-xs sm:text-sm bg-slate-800 dark:bg-studio-800 hover:bg-slate-700 dark:hover:bg-studio-700 disabled:opacity-40 disabled:cursor-not-allowed text-white transition flex items-center justify-center gap-2">
+                  <i data-lucide="download" class="w-4 h-4"></i>
+                  <span>Download Selected</span>
+                </button>
+                <button id="jpeg-zip-btn" onclick="downloadJpegZip()" disabled class="flex-1 sm:flex-initial py-2.5 px-5 rounded-xl font-bold text-xs sm:text-sm bg-emerald-600 hover:bg-emerald-700 disabled:opacity-40 disabled:cursor-not-allowed text-white shadow-lg shadow-emerald-600/20 transition flex items-center justify-center gap-2">
+                  <i data-lucide="archive" class="w-4 h-4"></i>
+                  <span id="jpeg-zip-label">Download All as ZIP</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================================================================== -->
+    <!-- SECTION 3: VECTORS (AI, EPS, SVG)                                     -->
+    <!-- ===================================================================== -->
+    <section id="section-svg" class="tab-panel hidden space-y-6">
+      <!-- Compliance Checklist Banner -->
+      <div class="bg-white dark:bg-studio-900 rounded-2xl border border-slate-200 dark:border-studio-800 p-4 sm:p-5 shadow-sm">
+        <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+          <div>
+            <div class="flex items-center gap-2">
+              <span class="px-2.5 py-0.5 rounded-md text-xs font-bold bg-purple-600/10 text-purple-600 dark:text-purple-400 border border-purple-600/20">SECTION 3</span>
+              <h2 class="text-base sm:text-lg font-bold tracking-tight">VECTORS (SVG TRACER &amp; ARTBOARD SCALER)</h2>
+            </div>
+            <p class="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-0.5">Converts raster graphics into clean multi-layer SVG vector paths with 15MP–65MP artboard dimensions.</p>
+          </div>
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+            <div id="svg-rule-min" class="rule-badge flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-100 dark:bg-studio-850 border border-slate-200 dark:border-studio-700">
+              <span class="status-dot w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0"></span>
+              <div>
+                <div class="font-semibold">Min 15MP</div>
+                <div id="svg-rule-min-sub" class="text-[11px] text-slate-500 dark:text-slate-400">Artboard &ge; 15MP</div>
+              </div>
+            </div>
+            <div id="svg-rule-max" class="rule-badge flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-100 dark:bg-studio-850 border border-slate-200 dark:border-studio-700">
+              <span class="status-dot w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0"></span>
+              <div>
+                <div class="font-semibold">Max 65MP</div>
+                <div id="svg-rule-max-sub" class="text-[11px] text-slate-500 dark:text-slate-400">Artboard &le; 65MP</div>
+              </div>
+            </div>
+            <div id="svg-rule-format" class="rule-badge flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-100 dark:bg-studio-850 border border-slate-200 dark:border-studio-700">
+              <span class="status-dot w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0"></span>
+              <div>
+                <div class="font-semibold">SVG Vector</div>
+                <div class="text-[11px] text-slate-500 dark:text-slate-400">AI / EPS / SVG ready</div>
+              </div>
+            </div>
+            <div id="svg-rule-size" class="rule-badge flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-100 dark:bg-studio-850 border border-slate-200 dark:border-studio-700">
+              <span class="status-dot w-2.5 h-2.5 rounded-full bg-slate-400 shrink-0"></span>
+              <div>
+                <div class="font-semibold">Max 45MB</div>
+                <div id="svg-rule-size-sub" class="text-[11px] text-slate-500 dark:text-slate-400">Waiting for trace</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <!-- Left Controls -->
+        <div class="lg:col-span-4 space-y-5">
+          <div id="svg-dropzone" class="group relative border-2 border-dashed border-slate-300 dark:border-studio-700 hover:border-purple-500 dark:hover:border-purple-500 rounded-2xl p-6 text-center bg-white dark:bg-studio-900 transition cursor-pointer">
+            <input type="file" id="svg-file-input" accept="image/*" multiple class="hidden" />
+            <div class="w-12 h-12 mx-auto rounded-2xl bg-purple-50 dark:bg-purple-500/10 text-purple-600 dark:text-purple-400 flex items-center justify-center mb-3 group-hover:scale-105 transition">
+              <i data-lucide="pen-tool" class="w-6 h-6"></i>
+            </div>
+            <p class="text-sm font-semibold">Drop multiple graphics or <span class="text-purple-600 dark:text-purple-400 underline">browse</span></p>
+            <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Batch traces PNG, JPG, WEBP into 15–65MP SVG files</p>
+            <div class="mt-3 flex items-center justify-center gap-2">
+              <button type="button" onclick="event.stopPropagation(); loadSampleAsset('svg')" class="text-xs font-medium px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-studio-800 hover:bg-slate-200 dark:hover:bg-studio-700 text-slate-700 dark:text-slate-300 transition">
+                Load Demo Batch (3)
+              </button>
+              <button type="button" id="svg-clear-batch" onclick="event.stopPropagation(); clearBatch('svg')" class="hidden text-xs font-medium px-3 py-1.5 rounded-lg bg-rose-500/10 text-rose-600 dark:text-rose-400 hover:bg-rose-500/20 transition">
+                Clear All
+              </button>
+            </div>
+          </div>
+
+          <!-- Artboard Megapixels (15MP - 65MP) -->
+          <div class="bg-white dark:bg-studio-900 rounded-2xl border border-slate-200 dark:border-studio-800 p-5 space-y-4">
+            <div class="flex items-center justify-between">
+              <h3 class="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">1. Artboard Resolution (15–65MP)</h3>
+              <span id="svg-mp-badge" class="text-xs font-extrabold px-2.5 py-0.5 rounded-full bg-purple-600/10 text-purple-600 dark:text-purple-400">25.0 MP</span>
+            </div>
+
+            <div>
+              <input type="range" id="svg-mp-slider" min="15" max="65" step="0.5" value="25" class="w-full" />
+              <div class="flex justify-between text-[11px] text-slate-400 mt-1">
+                <span>15 MP (Min)</span>
+                <span>40 MP</span>
+                <span>65 MP (Max)</span>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-4 gap-1.5">
+              <button type="button" onclick="setSvgMP(15)" class="py-1.5 rounded-lg text-xs font-semibold bg-slate-100 dark:bg-studio-800 hover:bg-purple-600 hover:text-white transition">15 MP</button>
+              <button type="button" onclick="setSvgMP(25)" class="py-1.5 rounded-lg text-xs font-semibold bg-slate-100 dark:bg-studio-800 hover:bg-purple-600 hover:text-white transition">25 MP</button>
+              <button type="button" onclick="setSvgMP(40)" class="py-1.5 rounded-lg text-xs font-semibold bg-slate-100 dark:bg-studio-800 hover:bg-purple-600 hover:text-white transition">40 MP</button>
+              <button type="button" onclick="setSvgMP(65)" class="py-1.5 rounded-lg text-xs font-semibold bg-slate-100 dark:bg-studio-800 hover:bg-purple-600 hover:text-white transition">65 MP</button>
+            </div>
+          </div>
+
+          <!-- Vector Tracing Controls -->
+          <div class="bg-white dark:bg-studio-900 rounded-2xl border border-slate-200 dark:border-studio-800 p-5 space-y-4">
+            <h3 class="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">2. Vector Tracing Engine</h3>
+
+            <div>
+              <label class="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1.5">Tracing Mode Preset</label>
+              <select id="svg-preset" onchange="applySvgPreset()" class="w-full rounded-xl bg-slate-100 dark:bg-studio-800 border border-slate-200 dark:border-studio-700 px-3 py-2 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-purple-500">
+                <option value="detailed">Detailed Color Illustration (16 Colors)</option>
+                <option value="flat">Flat Vector Graphic (8 Colors)</option>
+                <option value="logo">Logo / Clean Silhouette (3 Colors)</option>
+                <option value="ultraclean">Ultra-Clean Smooth Paths (12 Colors)</option>
+              </select>
+            </div>
+
+            <div>
+              <div class="flex justify-between text-xs mb-1">
+                <span class="font-medium text-slate-600 dark:text-slate-300">Color Palette Count</span>
+                <span id="svg-colors-val" class="font-bold text-purple-600 dark:text-purple-400">16</span>
+              </div>
+              <input type="range" id="svg-colors" min="2" max="32" value="16" class="w-full" />
+            </div>
+
+            <div>
+              <div class="flex justify-between text-xs mb-1">
+                <span class="font-medium text-slate-600 dark:text-slate-300">Path Smoothing</span>
+                <span id="svg-smooth-val" class="font-bold text-purple-600 dark:text-purple-400">1.0</span>
+              </div>
+              <input type="range" id="svg-smooth" min="0.2" max="3.0" step="0.2" value="1.0" class="w-full" />
+            </div>
+
+            <button id="svg-process-btn" onclick="processSvgBatch()" disabled class="w-full py-3 px-4 rounded-xl font-bold text-sm bg-purple-600 hover:bg-purple-700 disabled:opacity-40 disabled:cursor-not-allowed text-white shadow-lg shadow-purple-600/20 transition flex items-center justify-center gap-2">
+              <i data-lucide="sparkles" class="w-4 h-4"></i>
+              <span id="svg-process-label">Vectorize All to Scalable SVG</span>
+            </button>
+
+            <!-- Batch Progress Bar -->
+            <div id="svg-batch-progress-wrap" class="hidden space-y-1.5 pt-1">
+              <div class="flex justify-between text-[11px] font-semibold">
+                <span id="svg-batch-progress-text" class="text-purple-600 dark:text-purple-400">Tracing 0 / 0...</span>
+                <span id="svg-batch-progress-pct">0%</span>
+              </div>
+              <div class="w-full h-2 bg-slate-200 dark:bg-studio-800 rounded-full overflow-hidden">
+                <div id="svg-batch-progress-bar" class="h-full bg-purple-600 transition-all duration-150" style="width: 0%"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right Vector Preview -->
+        <div class="lg:col-span-8 flex flex-col gap-4">
+          <!-- Batch Queue Card -->
+          <div id="svg-queue-card" class="hidden bg-white dark:bg-studio-900 rounded-2xl border border-slate-200 dark:border-studio-800 p-4 shadow-sm">
+            <div class="flex items-center justify-between mb-3">
+              <div class="flex items-center gap-2">
+                <span class="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">Vector Batch Queue</span>
+                <span id="svg-queue-count" class="text-xs font-bold px-2 py-0.5 rounded-full bg-purple-600/10 text-purple-600 dark:text-purple-400">0 files</span>
+              </div>
+              <span class="text-[11px] text-slate-500 dark:text-slate-400">Click any item to inspect paths</span>
+            </div>
+            <div id="svg-queue-grid" class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2.5 max-h-[230px] overflow-y-auto pr-1"></div>
+          </div>
+
+          <div class="bg-white dark:bg-studio-900 rounded-2xl border border-slate-200 dark:border-studio-800 p-4 sm:p-5 flex-1 flex flex-col">
+            <div class="flex flex-wrap items-center justify-between gap-2 pb-3 mb-3 border-b border-slate-200 dark:border-studio-800">
+              <div class="flex items-center gap-2">
+                <span class="text-sm font-bold">Vector Path Inspector</span>
+                <div class="flex items-center gap-1 bg-slate-100 dark:bg-studio-800 rounded-lg p-1">
+                  <button type="button" onclick="zoomSvg(0.8)" class="px-2 py-0.5 text-xs font-bold hover:bg-white dark:hover:bg-studio-700 rounded">-</button>
+                  <span id="svg-zoom-label" class="text-[11px] font-semibold px-1.5">100%</span>
+                  <button type="button" onclick="zoomSvg(1.25)" class="px-2 py-0.5 text-xs font-bold hover:bg-white dark:hover:bg-studio-700 rounded">+</button>
+                </div>
+              </div>
+              <div class="flex flex-wrap items-center gap-3 text-xs font-medium text-slate-500 dark:text-slate-400">
+                <span>Artboard: <strong id="svg-dim-out" class="text-slate-900 dark:text-white">—</strong></span>
+                <span>Megapixels: <strong id="svg-mp-out" class="text-slate-900 dark:text-white">—</strong></span>
+                <span>SVG Size: <strong id="svg-size-out" class="text-slate-900 dark:text-white">—</strong></span>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 flex-1 min-h-[340px]">
+              <div class="flex flex-col rounded-xl border border-slate-200 dark:border-studio-800 overflow-hidden bg-slate-100 dark:bg-studio-950">
+                <div class="px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider bg-slate-200/70 dark:bg-studio-850 text-slate-600 dark:text-slate-400 flex justify-between">
+                  <span>Raster Source</span>
+                  <span id="svg-orig-info">No file</span>
+                </div>
+                <div class="flex-1 flex items-center justify-center p-4">
+                  <canvas id="svg-preview-orig" class="max-w-full max-h-[300px] object-contain rounded-lg"></canvas>
+                </div>
+              </div>
+
+              <div class="flex flex-col rounded-xl border border-slate-200 dark:border-studio-800 overflow-hidden checkerboard">
+                <div class="px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider bg-slate-200/90 dark:bg-studio-850/90 text-slate-700 dark:text-slate-300 flex justify-between">
+                  <span>Traced Vector (.SVG)</span>
+                  <span id="svg-path-count" class="text-purple-600 dark:text-purple-400">0 paths</span>
+                </div>
+                <div id="svg-output-container" class="flex-1 flex items-center justify-center p-4 overflow-auto">
+                  <span class="text-xs text-slate-500 dark:text-slate-400">Traced vector artwork appears here</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="mt-4 pt-4 border-t border-slate-200 dark:border-studio-800 flex flex-col sm:flex-row items-center justify-between gap-3">
+              <div class="text-[11px] text-slate-500 dark:text-slate-400">
+                <strong>Note:</strong> Output is standard XML <code>.svg</code> (15MP–65MP viewBox) directly importable into Adobe Illustrator (.AI) or EPS workflows.
+              </div>
+              <div class="flex flex-wrap items-center gap-2 w-full sm:w-auto justify-end shrink-0">
+                <button id="svg-download-btn" onclick="downloadSvg()" disabled class="flex-1 sm:flex-initial py-2.5 px-4 rounded-xl font-bold text-xs sm:text-sm bg-slate-800 dark:bg-studio-800 hover:bg-slate-700 dark:hover:bg-studio-700 disabled:opacity-40 disabled:cursor-not-allowed text-white transition flex items-center justify-center gap-2">
+                  <i data-lucide="download" class="w-4 h-4"></i>
+                  <span>Download Selected</span>
+                </button>
+                <button id="svg-zip-btn" onclick="downloadSvgZip()" disabled class="flex-1 sm:flex-initial py-2.5 px-5 rounded-xl font-bold text-xs sm:text-sm bg-emerald-600 hover:bg-emerald-700 disabled:opacity-40 disabled:cursor-not-allowed text-white shadow-lg shadow-emerald-600/20 transition flex items-center justify-center gap-2">
+                  <i data-lucide="archive" class="w-4 h-4"></i>
+                  <span id="svg-zip-label">Download All as ZIP</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================================================================== -->
+    <!-- SECTION 4: VIDEOS (IMAGE-TO-VIDEO / MOTION RENDERER)                  -->
+    <!-- ===================================================================== -->
+    <section id="section-video" class="tab-panel hidden space-y-6">
+      <!-- Compliance Checklist Banner -->
+      <div class="bg-white dark:bg-studio-900 rounded-2xl border border-slate-200 dark:border-studio-800 p-4 sm:p-5 shadow-sm">
+        <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+          <div>
+            <div class="flex items-center gap-2">
+              <span class="px-2.5 py-0.5 rounded-md text-xs font-bold bg-rose-600/10 text-rose-600 dark:text-rose-400 border border-rose-600/20">SECTION 4</span>
+              <h2 class="text-base sm:text-lg font-bold tracking-tight">VIDEOS (MOTION &amp; SLIDESHOW RENDERER)</h2>
+            </div>
+            <p class="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-0.5">Renders 720p/1080p/4K video clips (5s–60s) from single or multiple images with Ken Burns motion.</p>
+          </div>
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+            <div id="vid-rule-res" class="rule-badge flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-100 dark:bg-studio-850 border border-slate-200 dark:border-studio-700">
+              <span class="status-dot w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0"></span>
+              <div>
+                <div class="font-semibold">&ge; 1280x720</div>
+                <div id="vid-rule-res-sub" class="text-[11px] text-slate-500 dark:text-slate-400">1920x1080 Full HD</div>
+              </div>
+            </div>
+            <div id="vid-rule-format" class="rule-badge flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-100 dark:bg-studio-850 border border-slate-200 dark:border-studio-700">
+              <span class="status-dot w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0"></span>
+              <div>
+                <div class="font-semibold">MP4 / MOV</div>
+                <div id="vid-rule-codec-sub" class="text-[11px] text-slate-500 dark:text-slate-400">H.264 / WebM</div>
+              </div>
+            </div>
+            <div id="vid-rule-dur" class="rule-badge flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-100 dark:bg-studio-850 border border-slate-200 dark:border-studio-700">
+              <span class="status-dot w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0"></span>
+              <div>
+                <div class="font-semibold">5s – 60s</div>
+                <div id="vid-rule-dur-sub" class="text-[11px] text-slate-500 dark:text-slate-400">10s selected</div>
+              </div>
+            </div>
+            <div id="vid-rule-size" class="rule-badge flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-100 dark:bg-studio-850 border border-slate-200 dark:border-studio-700">
+              <span class="status-dot w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0"></span>
+              <div>
+                <div class="font-semibold">Max 3,900MB</div>
+                <div id="vid-rule-size-sub" class="text-[11px] text-slate-500 dark:text-slate-400">&le; 3.9GB limit</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <!-- Left Video Controls -->
+        <div class="lg:col-span-4 space-y-5">
+          <!-- Multi-image Dropzone -->
+          <div id="vid-dropzone" class="group relative border-2 border-dashed border-slate-300 dark:border-studio-700 hover:border-rose-500 dark:hover:border-rose-500 rounded-2xl p-5 text-center bg-white dark:bg-studio-900 transition cursor-pointer">
+            <input type="file" id="vid-file-input" accept="image/*" multiple class="hidden" />
+            <div class="w-11 h-11 mx-auto rounded-2xl bg-rose-50 dark:bg-rose-500/10 text-rose-600 dark:text-rose-400 flex items-center justify-center mb-2.5 group-hover:scale-105 transition">
+              <i data-lucide="video" class="w-6 h-6"></i>
+            </div>
+            <p class="text-sm font-semibold">Drop 1 or more images or <span class="text-rose-600 dark:text-rose-400 underline">browse</span></p>
+            <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Combine into 1 slideshow OR render separate videos</p>
+            <div class="mt-3 flex items-center justify-center gap-2">
+              <button type="button" onclick="event.stopPropagation(); loadSampleAsset('video')" class="text-xs font-medium px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-studio-800 hover:bg-slate-200 dark:hover:bg-studio-700 text-slate-700 dark:text-slate-300 transition">
+                Load Demo Batch (3)
+              </button>
+              <button type="button" id="vid-clear-imgs" onclick="event.stopPropagation(); clearVideoImages()" class="hidden text-xs font-medium px-3 py-1.5 rounded-lg bg-rose-500/10 text-rose-600 dark:text-rose-400 hover:bg-rose-500/20 transition">
+                Clear All
+              </button>
+            </div>
+            <div id="vid-thumb-strip" class="flex items-center gap-1.5 overflow-x-auto mt-3 pt-2 border-t border-slate-100 dark:border-studio-800 hidden"></div>
+          </div>
+
+          <!-- Video Batch Mode Selector -->
+          <div class="bg-white dark:bg-studio-900 rounded-2xl border border-slate-200 dark:border-studio-800 p-4 space-y-2.5">
+            <h3 class="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Multi-Image Video Mode</h3>
+            <div class="grid grid-cols-1 gap-2">
+              <button type="button" onclick="setVidBatchMode('slideshow')" id="vid-mode-slideshow" class="p-2.5 rounded-xl border-2 border-rose-600 bg-rose-600/10 text-left transition">
+                <div class="text-xs font-bold text-rose-600 dark:text-rose-400">A. Combine into One Slideshow Video</div>
+                <div class="text-[11px] text-slate-500 dark:text-slate-400">All uploaded images sequenced with crossfades &amp; motion</div>
+              </button>
+              <button type="button" onclick="setVidBatchMode('separate')" id="vid-mode-separate" class="p-2.5 rounded-xl border border-slate-200 dark:border-studio-700 text-left hover:border-rose-500 transition">
+                <div class="text-xs font-bold">B. Convert Each Image to Separate Video</div>
+                <div class="text-[11px] text-slate-500 dark:text-slate-400">Renders individual 5s–60s video clips + ZIP download</div>
+              </button>
+            </div>
+          </div>
+
+          <!-- Resolution & Aspect Ratio -->
+          <div class="bg-white dark:bg-studio-900 rounded-2xl border border-slate-200 dark:border-studio-800 p-5 space-y-4">
+            <h3 class="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">1. Resolution &amp; Orientation</h3>
+            
+            <div class="grid grid-cols-3 gap-2">
+              <button type="button" onclick="setVidRes('720p')" id="vid-res-720p" class="vid-res-btn p-2 rounded-xl border border-slate-200 dark:border-studio-700 text-left hover:border-rose-500 transition">
+                <div class="text-xs font-bold">HD 720p</div>
+                <div class="text-[10px] text-slate-500">1280&times;720 Min</div>
+              </button>
+              <button type="button" onclick="setVidRes('1080p')" id="vid-res-1080p" class="vid-res-btn p-2 rounded-xl border-2 border-rose-600 bg-rose-600/10 text-left transition">
+                <div class="text-xs font-bold text-rose-600 dark:text-rose-400">Full HD</div>
+                <div class="text-[10px] text-slate-500">1920&times;1080 Rec</div>
+              </button>
+              <button type="button" onclick="setVidRes('4k')" id="vid-res-4k" class="vid-res-btn p-2 rounded-xl border border-slate-200 dark:border-studio-700 text-left hover:border-rose-500 transition">
+                <div class="text-xs font-bold">4K UHD</div>
+                <div class="text-[10px] text-slate-500">3840&times;2160 Rec</div>
+              </button>
+            </div>
+
+            <div class="grid grid-cols-3 gap-2">
+              <button type="button" onclick="setVidAspect('16:9')" id="vid-aspect-16:9" class="vid-aspect-btn py-1.5 rounded-lg text-xs font-semibold bg-rose-600 text-white">16:9 Landscape</button>
+              <button type="button" onclick="setVidAspect('9:16')" id="vid-aspect-9:16" class="vid-aspect-btn py-1.5 rounded-lg text-xs font-semibold bg-slate-100 dark:bg-studio-800 text-slate-600 dark:text-slate-300">9:16 Vertical</button>
+              <button type="button" onclick="setVidAspect('1:1')" id="vid-aspect-1:1" class="vid-aspect-btn py-1.5 rounded-lg text-xs font-semibold bg-slate-100 dark:bg-studio-800 text-slate-600 dark:text-slate-300">1:1 Square</button>
+            </div>
+          </div>
+
+          <!-- Duration, Motion & Codec -->
+          <div class="bg-white dark:bg-studio-900 rounded-2xl border border-slate-200 dark:border-studio-800 p-5 space-y-4">
+            <h3 class="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">2. Duration (5s–60s) &amp; Motion</h3>
+
+            <div>
+              <div class="flex justify-between text-xs mb-1">
+                <span class="font-medium text-slate-600 dark:text-slate-300">Clip Duration</span>
+                <span id="vid-duration-val" class="font-bold text-rose-600 dark:text-rose-400">10 seconds</span>
+              </div>
+              <input type="range" id="vid-duration" min="5" max="60" step="1" value="10" class="w-full" />
+              <div class="flex justify-between text-[11px] text-slate-400 mt-1">
+                <span>5s (Min)</span>
+                <span>30s</span>
+                <span>60s (Max)</span>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-2.5">
+              <div>
+                <label class="block text-[11px] font-medium text-slate-500 dark:text-slate-400 mb-1">Camera Motion</label>
+                <select id="vid-motion" class="w-full rounded-xl bg-slate-100 dark:bg-studio-800 border border-slate-200 dark:border-studio-700 px-2.5 py-2 text-xs font-semibold">
+                  <option value="zoom-in">Slow Zoom In</option>
+                  <option value="zoom-out">Slow Zoom Out</option>
+                  <option value="pan-right">Pan Left to Right</option>
+                  <option value="float">Gentle Cinema Float</option>
+                  <option value="static">Static High-Res</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-[11px] font-medium text-slate-500 dark:text-slate-400 mb-1">Frame Rate</label>
+                <select id="vid-fps" class="w-full rounded-xl bg-slate-100 dark:bg-studio-800 border border-slate-200 dark:border-studio-700 px-2.5 py-2 text-xs font-semibold">
+                  <option value="30">30 FPS (Standard)</option>
+                  <option value="24">24 FPS (Cinema)</option>
+                  <option value="60">60 FPS (Smooth)</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="flex items-center gap-2">
+              <button type="button" onclick="toggleVideoPreviewPlay()" id="vid-preview-btn" disabled class="flex-1 py-2.5 px-3 rounded-xl font-semibold text-xs bg-slate-100 dark:bg-studio-800 hover:bg-slate-200 dark:hover:bg-studio-700 disabled:opacity-40 transition">
+                Live Preview Motion
+              </button>
+              <button type="button" id="vid-render-btn" onclick="startVideoRender()" disabled class="flex-[1.5] py-2.5 px-4 rounded-xl font-bold text-xs bg-rose-600 hover:bg-rose-700 disabled:opacity-40 text-white shadow-lg shadow-rose-600/20 transition">
+                Render &amp; Export Video
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right Video Stage -->
+        <div class="lg:col-span-8 flex flex-col gap-4">
+          <!-- Video Batch Queue Card -->
+          <div id="vid-queue-card" class="hidden bg-white dark:bg-studio-900 rounded-2xl border border-slate-200 dark:border-studio-800 p-4 shadow-sm">
+            <div class="flex items-center justify-between mb-3">
+              <div class="flex items-center gap-2">
+                <span class="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">Video Image Queue</span>
+                <span id="vid-queue-count" class="text-xs font-bold px-2 py-0.5 rounded-full bg-rose-600/10 text-rose-600 dark:text-rose-400">0 files</span>
+              </div>
+              <span class="text-[11px] text-slate-500 dark:text-slate-400">Click any clip/image to preview or remove</span>
+            </div>
+            <div id="vid-queue-grid" class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2.5 max-h-[210px] overflow-y-auto pr-1"></div>
+          </div>
+
+          <div class="bg-white dark:bg-studio-900 rounded-2xl border border-slate-200 dark:border-studio-800 p-4 sm:p-5 flex-1 flex flex-col">
+            <div class="flex flex-wrap items-center justify-between gap-2 pb-3 mb-3 border-b border-slate-200 dark:border-studio-800">
+              <div class="flex items-center gap-2">
+                <span class="text-sm font-bold">Video Render Monitor</span>
+                <span id="vid-rec-indicator" class="hidden items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-rose-600 text-white animate-pulse">
+                  <span class="w-2 h-2 rounded-full bg-white"></span>
+                  <span>RECORDING</span>
+                </span>
+              </div>
+              <div class="flex flex-wrap items-center gap-3 text-xs font-medium text-slate-500 dark:text-slate-400">
+                <span>Resolution: <strong id="vid-dim-out" class="text-slate-900 dark:text-white">1920&times;1080</strong></span>
+                <span>Duration: <strong id="vid-dur-out" class="text-slate-900 dark:text-white">10s</strong></span>
+                <span>Est. / Final Size: <strong id="vid-size-out" class="text-slate-900 dark:text-white">~18.5 MB</strong></span>
+              </div>
+            </div>
+
+            <!-- Canvas / Video Output Stage -->
+            <div class="relative flex-1 min-h-[340px] rounded-xl bg-black/95 border border-slate-200 dark:border-studio-800 flex items-center justify-center overflow-hidden p-3">
+              <canvas id="vid-stage-canvas" class="max-w-full max-h-[360px] object-contain rounded-lg shadow-2xl"></canvas>
+              <video id="vid-playback-player" controls class="hidden max-w-full max-h-[360px] rounded-lg shadow-2xl"></video>
+
+              <!-- Progress Overlay during Encoding -->
+              <div id="vid-progress-overlay" class="hidden absolute inset-0 bg-slate-950/80 backdrop-blur-sm flex flex-col items-center justify-center p-6 text-center">
+                <div class="w-full max-w-md space-y-3">
+                  <div class="text-sm font-bold text-white" id="vid-progress-label">Encoding Video Stream...</div>
+                  <div class="w-full h-3 bg-studio-800 rounded-full overflow-hidden">
+                    <div id="vid-progress-bar" class="h-full bg-gradient-to-r from-rose-500 to-amber-500 transition-all duration-150" style="width: 0%"></div>
+                  </div>
+                  <div class="flex justify-between text-xs text-slate-400">
+                    <span id="vid-progress-time">0.0s / 10.0s</span>
+                    <span id="vid-progress-pct">0%</span>
+                  </div>
+                  <button type="button" onclick="cancelVideoRender()" class="mt-2 px-4 py-1.5 rounded-lg text-xs font-semibold bg-white/10 hover:bg-white/20 text-white transition">
+                    Cancel Render
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div class="mt-4 pt-4 border-t border-slate-200 dark:border-studio-800 flex flex-col sm:flex-row items-center justify-between gap-3">
+              <div id="vid-status-msg" class="text-xs text-slate-500 dark:text-slate-400">
+                Supports H.264 (.mp4) or VP9 (.webm) depending on browser hardware encoder.
+              </div>
+              <div class="flex flex-wrap items-center gap-2 w-full sm:w-auto justify-end shrink-0">
+                <button id="vid-download-btn" onclick="downloadVideo()" disabled class="flex-1 sm:flex-initial py-2.5 px-4 rounded-xl font-bold text-xs sm:text-sm bg-slate-800 dark:bg-studio-800 hover:bg-slate-700 dark:hover:bg-studio-700 disabled:opacity-40 disabled:cursor-not-allowed text-white transition flex items-center justify-center gap-2">
+                  <i data-lucide="download" class="w-4 h-4"></i>
+                  <span id="vid-download-label">Download Video</span>
+                </button>
+                <button id="vid-zip-btn" onclick="downloadVideoZip()" disabled class="hidden flex-1 sm:flex-initial py-2.5 px-5 rounded-xl font-bold text-xs sm:text-sm bg-emerald-600 hover:bg-emerald-700 disabled:opacity-40 disabled:cursor-not-allowed text-white shadow-lg shadow-emerald-600/20 transition flex items-center justify-center gap-2">
+                  <i data-lucide="archive" class="w-4 h-4"></i>
+                  <span id="vid-zip-label">Download All Videos (ZIP)</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <script>
+    // =========================================================================
+    // CONSTANTS & SHARED HELPERS
+    // =========================================================================
+    const MAX_IMAGE_BYTES = 45 * 1024 * 1024; // 45 MB
+    const MAX_VIDEO_BYTES = 3900 * 1024 * 1024; // 3,900 MB (3.9 GB)
+
+    function formatBytes(bytes) {
+      if (!bytes || bytes <= 0) return '0 B';
+      const units = ['B', 'KB', 'MB', 'GB'];
+      const i = Math.min(units.length - 1, Math.floor(Math.log(bytes) / Math.log(1024)));
+      return `${(bytes / Math.pow(1024, i)).toFixed(i === 0 ? 0 : 2)} ${units[i]}`;
+    }
+
+    function showToast(message, type = 'info') {
+      const container = document.getElementById('toast-container');
+      const colors = {
+        success: 'bg-emerald-600 text-white border-emerald-500',
+        error: 'bg-rose-600 text-white border-rose-500',
+        warning: 'bg-amber-600 text-white border-amber-500',
+        info: 'bg-slate-800 dark:bg-studio-800 text-white border-slate-700'
+      };
+      const el = document.createElement('div');
+      el.className = `pointer-events-auto flex items-center justify-between gap-3 px-4 py-3 rounded-xl border shadow-xl text-xs font-semibold transition-all duration-200 ${colors[type] || colors.info}`;
+      el.innerHTML = `<span>${message}</span><button type="button" class="opacity-75 hover:opacity-100 text-sm leading-none">&times;</button>`;
+      el.querySelector('button').onclick = () => el.remove();
+      container.appendChild(el);
+      setTimeout(() => {
+        el.classList.add('opacity-0', 'translate-y-2');
+        setTimeout(() => el.remove(), 220);
+      }, 3600);
+    }
+
+    function setRuleStatus(badgeId, status, subText) {
+      const badge = document.getElementById(badgeId);
+      if (!badge) return;
+      const dot = badge.querySelector('.status-dot');
+      if (dot) {
+        dot.className = 'status-dot w-2.5 h-2.5 rounded-full shrink-0 ' + (
+          status === 'pass' ? 'bg-emerald-500' :
+          status === 'fail' ? 'bg-rose-500' :
+          status === 'warn' ? 'bg-amber-500' : 'bg-slate-400'
+        );
+      }
+      if (subText !== undefined) {
+        const subEl = document.getElementById(`${badgeId}-sub`);
+        if (subEl) subEl.textContent = subText;
+      }
+    }
+
+    function computeTargetDimensions(origW, origH, targetMP) {
+      const targetPixels = targetMP * 1_000_000;
+      const aspect = origW / Math.max(1, origH);
+      let height = Math.round(Math.sqrt(targetPixels / aspect));
+      let width = Math.round(height * aspect);
+      // Ensure exact pixel product stays within bounds
+      if ((width * height) / 1_000_000 > 100) {
+        const shrink = Math.sqrt((99.8 * 1_000_000) / (width * height));
+        width = Math.floor(width * shrink);
+        height = Math.floor(height * shrink);
+      }
+      return {
+        width: Math.max(1, width),
+        height: Math.max(1, height),
+        mp: (width * height) / 1_000_000
+      };
+    }
+
+    function loadImageFromFile(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const img = new Image();
+          img.onload = () => resolve(img);
+          img.onerror = reject;
+          img.src = e.target.result;
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+    }
+
+    function bindDropzone(dropzoneId, inputId, onFiles) {
+      const zone = document.getElementById(dropzoneId);
+      const input = document.getElementById(inputId);
+      if (!zone || !input) return;
+
+      zone.addEventListener('click', () => input.click());
+      input.addEventListener('change', (e) => {
+        if (e.target.files && e.target.files.length) {
+          onFiles(Array.from(e.target.files));
+          input.value = '';
+        }
+      });
+
+      zone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        zone.classList.add('ring-2', 'ring-blue-500');
+      });
+      zone.addEventListener('dragleave', () => {
+        zone.classList.remove('ring-2', 'ring-blue-500');
+      });
+      zone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        zone.classList.remove('ring-2', 'ring-blue-500');
+        if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length) {
+          onFiles(Array.from(e.dataTransfer.files));
+        }
+      });
+    }
+
+    // Theme toggle & Tab switcher
+    document.getElementById('theme-toggle').addEventListener('click', () => {
+      document.documentElement.classList.toggle('dark');
+    });
+
+    function switchTab(tabKey) {
+      document.querySelectorAll('.tab-panel').forEach(p => p.classList.add('hidden'));
+      document.getElementById(`section-${tabKey}`).classList.remove('hidden');
+
+      const tabColors = {
+        png: 'bg-blue-600 text-white shadow-md shadow-blue-600/25',
+        jpeg: 'bg-indigo-600 text-white shadow-md shadow-indigo-600/25',
+        svg: 'bg-purple-600 text-white shadow-md shadow-purple-600/25',
+        video: 'bg-rose-600 text-white shadow-md shadow-rose-600/25'
+      };
+
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.className = 'tab-btn flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold whitespace-nowrap transition bg-slate-100 dark:bg-studio-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-studio-700';
+      });
+      const activeBtn = document.getElementById(`tab-btn-${tabKey}`);
+      activeBtn.className = `tab-btn active flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold whitespace-nowrap transition ${tabColors[tabKey]}`;
+    }
+
+    // =========================================================================
+    // DEMO GRAPHICS GENERATOR
+    // =========================================================================
+    function createDemoGraphicCanvas(variant) {
+      const c = document.createElement('canvas');
+      c.width = 1200;
+      c.height = 900;
+      const ctx = c.getContext('2d');
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, c.width, c.height);
+
+      const palettes = [
+        ['#2563eb', '#7c3aed', '#ec4899', '#fbbf24'],
+        ['#059669', '#0d9488', '#0284c7', '#f59e0b'],
+        ['#e11d48', '#f97316', '#eab308', '#3b82f6']
+      ];
+      const p = palettes[variant % palettes.length];
+      const grad = ctx.createLinearGradient(300, 150, 900, 750);
+      grad.addColorStop(0, p[0]);
+      grad.addColorStop(0.5, p[1]);
+      grad.addColorStop(1, p[2]);
+
+      ctx.fillStyle = grad;
+      ctx.beginPath();
+      if (variant % 3 === 0) {
+        ctx.arc(600, 450, 310, 0, Math.PI * 2);
+      } else if (variant % 3 === 1) {
+        ctx.roundRect(300, 180, 600, 540, 80);
+      } else {
+        ctx.moveTo(600, 130);
+        ctx.lineTo(920, 450);
+        ctx.lineTo(600, 770);
+        ctx.lineTo(280, 450);
+        ctx.closePath();
+      }
+      ctx.fill();
+
+      ctx.fillStyle = p[3];
+      ctx.beginPath();
+      ctx.moveTo(600, 220);
+      ctx.lineTo(780, 550);
+      ctx.lineTo(420, 550);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.fillStyle = '#0f172a';
+      ctx.beginPath();
+      ctx.arc(600, 465, 80, 0, Math.PI * 2);
+      ctx.fill();
+      return c;
+    }
+
+    function createDemoSceneCanvas(variant) {
+      const c = document.createElement('canvas');
+      c.width = 1200;
+      c.height = 900;
+      const ctx = c.getContext('2d');
+      const themes = [
+        ['#0f172a', '#1e3a8a', '#f97316', '#fde047', '#fef08a', '#1e293b'],
+        ['#064e3b', '#047857', '#34d399', '#a7f3d0', '#ecfdf5', '#022c22'],
+        ['#31102f', '#701a75', '#db2777', '#f472b6', '#fbcfe8', '#1f091d']
+      ];
+      const t = themes[variant % themes.length];
+      const sky = ctx.createLinearGradient(0, 0, 0, 900);
+      sky.addColorStop(0, t[0]);
+      sky.addColorStop(0.45, t[1]);
+      sky.addColorStop(0.75, t[2]);
+      sky.addColorStop(1, t[3]);
+      ctx.fillStyle = sky;
+      ctx.fillRect(0, 0, 1200, 900);
+
+      ctx.fillStyle = t[4];
+      ctx.beginPath();
+      ctx.arc(450 + variant * 150, 510, 125, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = t[5];
+      ctx.beginPath();
+      ctx.moveTo(0, 900);
+      ctx.lineTo(0, 620);
+      ctx.lineTo(340, 430 + variant * 20);
+      ctx.lineTo(660, 640);
+      ctx.lineTo(960, 410 - variant * 15);
+      ctx.lineTo(1200, 580);
+      ctx.lineTo(1200, 900);
+      ctx.closePath();
+      ctx.fill();
+      return c;
+    }
+
+    async function loadSampleAsset(section) {
+      const demos = [];
+      for (let i = 0; i < 3; i++) {
+        const c = (section === 'png' || section === 'svg')
+          ? createDemoGraphicCanvas(i)
+          : createDemoSceneCanvas(i);
+        const img = await new Promise(res => {
+          const im = new Image();
+          im.onload = () => res(im);
+          im.src = c.toDataURL('image/png');
+        });
+        demos.push({ img, name: `demo-${section}-${i + 1}.png` });
+      }
+
+      if (section === 'png') addPngItems(demos);
+      if (section === 'jpeg') addJpegItems(demos);
+      if (section === 'svg') addSvgItems(demos);
+      if (section === 'video') {
+        addVideoItems(demos);
+        showToast('Loaded 3 demo scenes into Video Batch Queue!', 'success');
+      }
+    }
+
+    function clearBatch(section) {
+      if (section === 'png') {
+        pngState.items = [];
+        pngState.selectedIndex = -1;
+        renderPngQueueUI();
+        document.getElementById('png-process-btn').disabled = true;
+        document.getElementById('png-download-btn').disabled = true;
+        document.getElementById('png-zip-btn').disabled = true;
+        document.getElementById('png-clear-batch').classList.add('hidden');
+        document.getElementById('png-orig-info').textContent = 'No file';
+        document.getElementById('png-dim-out').textContent = '—';
+        document.getElementById('png-mp-out').textContent = '—';
+        document.getElementById('png-size-out').textContent = '—';
+        ['png-preview-orig', 'png-preview-out'].forEach(id => {
+          const c = document.getElementById(id);
+          c.getContext('2d').clearRect(0, 0, c.width, c.height);
+        });
+      } else if (section === 'jpeg') {
+        jpegState.items = [];
+        jpegState.selectedIndex = -1;
+        renderJpegQueueUI();
+        document.getElementById('jpeg-process-btn').disabled = true;
+        document.getElementById('jpeg-download-btn').disabled = true;
+        document.getElementById('jpeg-zip-btn').disabled = true;
+        document.getElementById('jpeg-clear-batch').classList.add('hidden');
+        document.getElementById('jpeg-orig-info').textContent = 'No file';
+        document.getElementById('jpeg-dim-out').textContent = '—';
+        document.getElementById('jpeg-mp-out').textContent = '—';
+        document.getElementById('jpeg-size-out').textContent = '—';
+        const c = document.getElementById('jpeg-preview-orig');
+        c.getContext('2d').clearRect(0, 0, c.width, c.height);
+        document.getElementById('jpeg-preview-out').classList.add('hidden');
+        document.getElementById('jpeg-placeholder-txt').classList.remove('hidden');
+      } else if (section === 'svg') {
+        svgState.items = [];
+        svgState.selectedIndex = -1;
+        renderSvgQueueUI();
+        document.getElementById('svg-process-btn').disabled = true;
+        document.getElementById('svg-download-btn').disabled = true;
+        document.getElementById('svg-zip-btn').disabled = true;
+        document.getElementById('svg-clear-batch').classList.add('hidden');
+        document.getElementById('svg-orig-info').textContent = 'No file';
+        document.getElementById('svg-dim-out').textContent = '—';
+        document.getElementById('svg-mp-out').textContent = '—';
+        document.getElementById('svg-size-out').textContent = '—';
+        const c = document.getElementById('svg-preview-orig');
+        c.getContext('2d').clearRect(0, 0, c.width, c.height);
+        document.getElementById('svg-output-container').innerHTML = '<span class="text-xs text-slate-500 dark:text-slate-400">Traced vector artwork appears here</span>';
+      }
+    }
+
+    // =========================================================================
+    // SECTION 1: TRANSPARENT PNG BATCH LOGIC
+    // =========================================================================
+    const pngState = {
+      items: [],
+      selectedIndex: -1,
+      bgMode: 'auto'
+    };
+
+    bindDropzone('png-dropzone', 'png-file-input', async (files) => {
+      try {
+        const loaded = [];
+        for (const file of files) {
+          if (file.type.startsWith('image/')) {
+            const img = await loadImageFromFile(file);
+            loaded.push({ img, name: file.name });
+          }
+        }
+        if (!loaded.length) {
+          showToast('Please select valid image file(s).', 'warning');
+          return;
+        }
+        addPngItems(loaded);
+      } catch (err) {
+        showToast('Could not load one or more image files.', 'error');
+      }
+    });
+
+    function addPngItems(entries) {
+      const startIdx = pngState.items.length;
+      entries.forEach((entry, i) => {
+        pngState.items.push({
+          id: Date.now() + '-' + i + '-' + Math.random().toString(36).slice(2, 6),
+          name: entry.name.replace(/\.[^/.]+$/, '') + '-transparent.png',
+          origName: entry.name,
+          sourceImg: entry.img,
+          previewDataUrl: null,
+          outputBlob: null,
+          width: 0,
+          height: 0,
+          mp: 0,
+          hasTransparency: false,
+          compliant: false
+        });
+      });
+
+      document.getElementById('png-clear-batch').classList.remove('hidden');
+      document.getElementById('png-process-btn').disabled = false;
+
+      if (pngState.selectedIndex === -1 && pngState.items.length > 0) {
+        pngState.selectedIndex = 0;
+      } else if (startIdx < pngState.items.length) {
+        pngState.selectedIndex = startIdx;
+      }
+
+      const activeItem = pngState.items[pngState.selectedIndex];
+      if (activeItem) {
+        const naturalMP = (activeItem.sourceImg.width * activeItem.sourceImg.height) / 1_000_000;
+        if (naturalMP >= 4.1 && naturalMP <= 100) {
+          document.getElementById('png-mp-slider').value = parseFloat(naturalMP.toFixed(1));
+          document.getElementById('png-mp-badge').textContent = `${naturalMP.toFixed(1)} MP`;
+        }
+        autoSampleCornerColor(true);
+      }
+
+      renderPngQueueUI();
+      processPngBatch();
+    }
+
+    function selectPngItem(idx) {
+      if (idx < 0 || idx >= pngState.items.length) return;
+      pngState.selectedIndex = idx;
+      const item = pngState.items[idx];
+
+      const origCanvas = document.getElementById('png-preview-orig');
+      origCanvas.width = item.sourceImg.width;
+      origCanvas.height = item.sourceImg.height;
+      origCanvas.getContext('2d').drawImage(item.sourceImg, 0, 0);
+      const origMP = ((item.sourceImg.width * item.sourceImg.height) / 1_000_000).toFixed(2);
+      document.getElementById('png-orig-info').textContent = `${item.sourceImg.width}×${item.sourceImg.height} (${origMP}MP)`;
+
+      const prevOut = document.getElementById('png-preview-out');
+      if (item.previewDataUrl) {
+        const pImg = new Image();
+        pImg.onload = () => {
+          prevOut.width = pImg.width;
+          prevOut.height = pImg.height;
+          prevOut.getContext('2d').drawImage(pImg, 0, 0);
+        };
+        pImg.src = item.previewDataUrl;
+
+        document.getElementById('png-dim-out').textContent = `${item.width} × ${item.height} px`;
+        document.getElementById('png-mp-out').textContent = `${item.mp.toFixed(2)} MP`;
+        document.getElementById('png-size-out').textContent = item.outputBlob ? formatBytes(item.outputBlob.size) : '—';
+
+        setRuleStatus('png-rule-alpha', item.hasTransparency ? 'pass' : 'warn', item.hasTransparency ? 'Alpha verified' : 'No transparent px');
+        setRuleStatus('png-rule-res', item.mp >= 4.0 && item.mp <= 100 ? 'pass' : 'fail', `${item.mp.toFixed(2)} MP (${item.width}×${item.height})`);
+        if (item.outputBlob && item.outputBlob.size <= MAX_IMAGE_BYTES) {
+          setRuleStatus('png-rule-size', 'pass', `${formatBytes(item.outputBlob.size)} / 45MB`);
+          document.getElementById('png-download-btn').disabled = false;
+        } else if (item.outputBlob) {
+          setRuleStatus('png-rule-size', 'fail', `${formatBytes(item.outputBlob.size)} > 45MB!`);
+          document.getElementById('png-download-btn').disabled = true;
+        }
+      }
+      renderPngQueueUI();
+    }
+
+    function removePngItem(e, idx) {
+      e.stopPropagation();
+      pngState.items.splice(idx, 1);
+      if (!pngState.items.length) {
+        clearBatch('png');
+        return;
+      }
+      if (pngState.selectedIndex >= pngState.items.length) {
+        pngState.selectedIndex = pngState.items.length - 1;
+      }
+      selectPngItem(pngState.selectedIndex);
+      updatePngZipButton();
+    }
+
+    function renderPngQueueUI() {
+      const card = document.getElementById('png-queue-card');
+      const grid = document.getElementById('png-queue-grid');
+      const countBadge = document.getElementById('png-queue-count');
+      const procLabel = document.getElementById('png-process-label');
+
+      if (!pngState.items.length) {
+        card.classList.add('hidden');
+        procLabel.textContent = 'Convert All to Transparent PNG';
+        return;
+      }
+      card.classList.remove('hidden');
+      countBadge.textContent = `${pngState.items.length} file${pngState.items.length > 1 ? 's' : ''}`;
+      procLabel.textContent = `Convert All (${pngState.items.length}) to Transparent PNG`;
+
+      grid.innerHTML = '';
+      pngState.items.forEach((item, idx) => {
+        const isSelected = idx === pngState.selectedIndex;
+        const origMP = ((item.sourceImg.width * item.sourceImg.height) / 1_000_000).toFixed(1);
+        const statusBadge = !item.outputBlob
+          ? `<span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-slate-200 dark:bg-studio-700 text-slate-600 dark:text-slate-300">QUEUED</span>`
+          : item.compliant
+            ? `<span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">PASS</span>`
+            : `<span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-rose-500/15 text-rose-600 dark:text-rose-400">FAIL</span>`;
+
+        const el = document.createElement('div');
+        el.onclick = () => selectPngItem(idx);
+        el.className = `group relative flex items-center gap-2.5 p-2 rounded-xl border cursor-pointer transition ${
+          isSelected
+            ? 'border-blue-600 bg-blue-600/10'
+            : 'border-slate-200 dark:border-studio-800 bg-slate-50 dark:bg-studio-850 hover:border-blue-400'
+        }`;
+        el.innerHTML = `
+          <img src="${item.previewDataUrl || item.sourceImg.src}" class="w-11 h-11 rounded-lg object-cover checkerboard border border-slate-200 dark:border-studio-700 shrink-0" />
+          <div class="min-w-0 flex-1">
+            <div class="text-xs font-semibold truncate">${item.origName}</div>
+            <div class="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">
+              ${origMP}MP &rarr; ${item.mp ? item.mp.toFixed(1) + 'MP' : '—'} • ${item.outputBlob ? formatBytes(item.outputBlob.size) : 'Pending'}
+            </div>
+            <div class="mt-1 flex items-center gap-1.5">${statusBadge}</div>
+          </div>
+          <button type="button" onclick="removePngItem(event, ${idx})" title="Remove" class="p-1 rounded-lg text-slate-400 hover:text-rose-500 hover:bg-rose-500/10 transition">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+          </button>
+        `;
+        grid.appendChild(el);
+      });
+    }
+
+    function setPngBgMode(mode) {
+      pngState.bgMode = mode;
+      const btnAuto = document.getElementById('png-bg-mode-auto');
+      const btnKeep = document.getElementById('png-bg-mode-keep');
+      const controls = document.getElementById('png-bg-controls');
+
+      if (mode === 'auto') {
+        btnAuto.className = 'px-3 py-2.5 rounded-xl text-xs font-semibold border border-blue-600 bg-blue-600/10 text-blue-600 dark:text-blue-400 transition';
+        btnKeep.className = 'px-3 py-2.5 rounded-xl text-xs font-semibold border border-slate-200 dark:border-studio-700 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-studio-800 transition';
+        controls.classList.remove('opacity-40', 'pointer-events-none');
+      } else {
+        btnKeep.className = 'px-3 py-2.5 rounded-xl text-xs font-semibold border border-blue-600 bg-blue-600/10 text-blue-600 dark:text-blue-400 transition';
+        btnAuto.className = 'px-3 py-2.5 rounded-xl text-xs font-semibold border border-slate-200 dark:border-studio-700 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-studio-800 transition';
+        controls.classList.add('opacity-40', 'pointer-events-none');
+      }
+      if (pngState.items.length) processPngBatch();
+    }
+
+    function autoSampleCornerColor(silent = false) {
+      const current = pngState.items[pngState.selectedIndex] || pngState.items[0];
+      if (!current) return;
+      const c = document.createElement('canvas');
+      c.width = 64;
+      c.height = 64;
+      const ctx = c.getContext('2d');
+      ctx.drawImage(current.sourceImg, 0, 0, 64, 64);
+      const data = ctx.getImageData(0, 0, 64, 64).data;
+      const r = data[0], g = data[1], b = data[2], a = data[3];
+      if (a < 50) {
+        if (!silent) showToast('Selected image already has transparent corners!', 'info');
+        return;
+      }
+      const hex = '#' + [r, g, b].map(x => x.toString(16).padStart(2, '0')).join('');
+      document.getElementById('png-bg-color').value = hex;
+      if (!silent) {
+        showToast(`Sampled background color: ${hex.toUpperCase()}`, 'info');
+        processPngBatch();
+      }
+    }
+
+    function setPngMP(val) {
+      const clamped = Math.max(4.1, Math.min(100, val));
+      document.getElementById('png-mp-slider').value = clamped;
+      document.getElementById('png-mp-badge').textContent = `${clamped.toFixed(1)} MP`;
+      if (pngState.items.length) processPngBatch();
+    }
+
+    document.getElementById('png-mp-slider').addEventListener('input', (e) => {
+      document.getElementById('png-mp-badge').textContent = `${parseFloat(e.target.value).toFixed(1)} MP`;
+    });
+    document.getElementById('png-mp-slider').addEventListener('change', () => {
+      if (pngState.items.length) processPngBatch();
+    });
+    document.getElementById('png-tolerance').addEventListener('input', (e) => {
+      document.getElementById('png-tolerance-val').textContent = `${e.target.value}%`;
+    });
+    document.getElementById('png-tolerance').addEventListener('change', () => {
+      if (pngState.items.length) processPngBatch();
+    });
+    document.getElementById('png-feather').addEventListener('input', (e) => {
+      document.getElementById('png-feather-val').textContent = `${e.target.value}%`;
+    });
+    document.getElementById('png-feather').addEventListener('change', () => {
+      if (pngState.items.length) processPngBatch();
+    });
+    document.getElementById('png-bg-color').addEventListener('change', () => {
+      if (pngState.items.length) processPngBatch();
+    });
+    document.getElementById('png-contiguous').addEventListener('change', () => {
+      if (pngState.items.length) processPngBatch();
+    });
+
+    function hexToRgb(hex) {
+      const num = parseInt(hex.replace('#', ''), 16);
+      return { r: (num >> 16) & 255, g: (num >> 8) & 255, b: num & 255 };
+    }
+
+    async function renderSinglePngItem(item) {
+      const img = item.sourceImg;
+      const workMax = 1400;
+      const scaleWork = Math.min(1, workMax / Math.max(img.width, img.height));
+      const wW = Math.max(1, Math.round(img.width * scaleWork));
+      const wH = Math.max(1, Math.round(img.height * scaleWork));
+
+      const workCanvas = document.createElement('canvas');
+      workCanvas.width = wW;
+      workCanvas.height = wH;
+      const wCtx = workCanvas.getContext('2d');
+      wCtx.drawImage(img, 0, 0, wW, wH);
+
+      const imgData = wCtx.getImageData(0, 0, wW, wH);
+      const data = imgData.data;
+
+      if (pngState.bgMode === 'auto') {
+        const targetRgb = hexToRgb(document.getElementById('png-bg-color').value);
+        const tol = (parseInt(document.getElementById('png-tolerance').value, 10) / 100) * 441.67;
+        const feather = (parseInt(document.getElementById('png-feather').value, 10) / 100) * 180;
+        const contiguous = document.getElementById('png-contiguous').checked;
+
+        const colorDist = (idx) => {
+          const dr = data[idx] - targetRgb.r;
+          const dg = data[idx + 1] - targetRgb.g;
+          const db = data[idx + 2] - targetRgb.b;
+          return Math.sqrt(dr * dr + dg * dg + db * db);
+        };
+
+        if (contiguous) {
+          const visited = new Uint8Array(wW * wH);
+          const stack = [];
+          for (let x = 0; x < wW; x++) stack.push(x, (wH - 1) * wW + x);
+          for (let y = 0; y < wH; y++) stack.push(y * wW, y * wW + (wW - 1));
+          while (stack.length > 0) {
+            const p = stack.pop();
+            if (visited[p]) continue;
+            visited[p] = 1;
+            const idx = p * 4;
+            const d = colorDist(idx);
+            if (d <= tol + feather) {
+              if (d <= tol) {
+                data[idx + 3] = 0;
+              } else {
+                const alphaRatio = (d - tol) / Math.max(1, feather);
+                data[idx + 3] = Math.min(data[idx + 3], Math.round(alphaRatio * 255));
+              }
+              const x = p % wW;
+              const y = (p - x) / wW;
+              if (x > 0 && !visited[p - 1]) stack.push(p - 1);
+              if (x < wW - 1 && !visited[p + 1]) stack.push(p + 1);
+              if (y > 0 && !visited[p - wW]) stack.push(p - wW);
+              if (y < wH - 1 && !visited[p + wW]) stack.push(p + wW);
+            }
+          }
+        } else {
+          for (let i = 0; i < data.length; i += 4) {
+            const d = colorDist(i);
+            if (d <= tol) {
+              data[i + 3] = 0;
+            } else if (d <= tol + feather) {
+              const alphaRatio = (d - tol) / Math.max(1, feather);
+              data[i + 3] = Math.min(data[i + 3], Math.round(alphaRatio * 255));
+            }
+          }
+        }
+        wCtx.putImageData(imgData, 0, 0);
+      }
+
+      let transparentCount = 0;
+      for (let i = 3; i < data.length; i += 16) {
+        if (data[i] < 250) transparentCount++;
+      }
+      item.hasTransparency = transparentCount > 5;
+      item.previewDataUrl = workCanvas.toDataURL('image/png');
+
+      const targetMP = parseFloat(document.getElementById('png-mp-slider').value);
+      const dims = computeTargetDimensions(img.width, img.height, targetMP);
+
+      const outCanvas = document.createElement('canvas');
+      outCanvas.width = dims.width;
+      outCanvas.height = dims.height;
+      const outCtx = outCanvas.getContext('2d');
+      outCtx.imageSmoothingEnabled = true;
+      outCtx.imageSmoothingQuality = 'high';
+      outCtx.drawImage(workCanvas, 0, 0, dims.width, dims.height);
+
+      const blob = await new Promise(res => outCanvas.toBlob(res, 'image/png'));
+      if (!blob) throw new Error('Canvas memory limit reached for this resolution');
+      item.outputBlob = blob;
+      item.width = dims.width;
+      item.height = dims.height;
+      item.mp = dims.mp;
+      item.compliant = blob.size <= MAX_IMAGE_BYTES && dims.mp >= 4.0 && dims.mp <= 100 && item.hasTransparency;
+    }
+
+    async function processPngBatch() {
+      if (!pngState.items.length) return;
+      const btn = document.getElementById('png-process-btn');
+      const progWrap = document.getElementById('png-batch-progress-wrap');
+      const progText = document.getElementById('png-batch-progress-text');
+      const progPct = document.getElementById('png-batch-progress-pct');
+      const progBar = document.getElementById('png-batch-progress-bar');
+
+      btn.disabled = true;
+      progWrap.classList.remove('hidden');
+
+      try {
+        const total = pngState.items.length;
+        for (let i = 0; i < total; i++) {
+          progText.textContent = `Processing ${i + 1} / ${total}: ${pngState.items[i].origName}`;
+          const pct = Math.round(((i + 1) / total) * 100);
+          progPct.textContent = `${pct}%`;
+          progBar.style.width = `${pct}%`;
+
+          await new Promise(r => setTimeout(r, 15));
+          await renderSinglePngItem(pngState.items[i]);
+          if (i === pngState.selectedIndex) {
+            selectPngItem(i);
+          }
+        }
+        selectPngItem(pngState.selectedIndex >= 0 ? pngState.selectedIndex : 0);
+        updatePngZipButton();
+        const passCount = pngState.items.filter(x => x.compliant).length;
+        document.getElementById('png-status-msg').innerHTML = `<span class="text-emerald-600 dark:text-emerald-400 font-semibold">Batch Complete!</span> ${passCount} of ${total} images passed all Transparent PNG rules.`;
+      } catch (err) {
+        console.error(err);
+        showToast('Batch error rendering PNGs. Try lowering target MP if browser RAM is exceeded.', 'error');
+      } finally {
+        btn.disabled = false;
+        setTimeout(() => progWrap.classList.add('hidden'), 1200);
+      }
+    }
+
+    function updatePngZipButton() {
+      const readyCount = pngState.items.filter(x => x.outputBlob).length;
+      const zipBtn = document.getElementById('png-zip-btn');
+      const zipLabel = document.getElementById('png-zip-label');
+      zipBtn.disabled = readyCount === 0;
+      zipLabel.textContent = readyCount > 1 ? `Download All (${readyCount}) as ZIP` : 'Download ZIP';
+    }
+
+    function downloadPng() {
+      const item = pngState.items[pngState.selectedIndex];
+      if (!item || !item.outputBlob) return;
+      const url = URL.createObjectURL(item.outputBlob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = item.name;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 2000);
+      showToast(`Downloaded ${item.name}`, 'success');
+    }
+
+    async function downloadPngZip() {
+      const readyItems = pngState.items.filter(x => x.outputBlob);
+      if (!readyItems.length || !window.JSZip) return;
+      const zip = new JSZip();
+      readyItems.forEach((item, idx) => {
+        const safeName = `${String(idx + 1).padStart(2, '0')}-${item.name}`;
+        zip.file(safeName, item.outputBlob);
+      });
+      const content = await zip.generateAsync({ type: 'blob' });
+      const url = URL.createObjectURL(content);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `transparent-png-batch-${readyItems.length}-files.zip`;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 3000);
+      showToast(`Exported ${readyItems.length} Transparent PNGs in ZIP!`, 'success');
+    }
+
+    // =========================================================================
+    // SECTION 2: IMAGES (JPEG FILES) BATCH LOGIC
+    // =========================================================================
+    const jpegState = {
+      items: [],
+      selectedIndex: -1
+    };
+
+    bindDropzone('jpeg-dropzone', 'jpeg-file-input', async (files) => {
+      try {
+        const loaded = [];
+        for (const file of files) {
+          if (file.type.startsWith('image/')) {
+            const img = await loadImageFromFile(file);
+            loaded.push({ img, name: file.name });
+          }
+        }
+        if (!loaded.length) {
+          showToast('Please select valid image file(s).', 'warning');
+          return;
+        }
+        addJpegItems(loaded);
+      } catch (err) {
+        showToast('Could not load one or more image files.', 'error');
+      }
+    });
+
+    function addJpegItems(entries) {
+      const startIdx = jpegState.items.length;
+      entries.forEach((entry, i) => {
+        jpegState.items.push({
+          id: Date.now() + '-' + i + '-' + Math.random().toString(36).slice(2, 6),
+          name: entry.name.replace(/\.[^/.]+$/, '') + '.jpg',
+          origName: entry.name,
+          sourceImg: entry.img,
+          previewUrl: null,
+          outputBlob: null,
+          width: 0,
+          height: 0,
+          mp: 0,
+          compliant: false
+        });
+      });
+
+      document.getElementById('jpeg-clear-batch').classList.remove('hidden');
+      document.getElementById('jpeg-process-btn').disabled = false;
+
+      if (jpegState.selectedIndex === -1 && jpegState.items.length > 0) {
+        jpegState.selectedIndex = 0;
+      } else if (startIdx < jpegState.items.length) {
+        jpegState.selectedIndex = startIdx;
+      }
+
+      const activeItem = jpegState.items[jpegState.selectedIndex];
+      if (activeItem) {
+        const naturalMP = (activeItem.sourceImg.width * activeItem.sourceImg.height) / 1_000_000;
+        if (naturalMP >= 4.1 && naturalMP <= 100) {
+          document.getElementById('jpeg-mp-slider').value = parseFloat(naturalMP.toFixed(1));
+          document.getElementById('jpeg-mp-badge').textContent = `${naturalMP.toFixed(1)} MP`;
+        }
+      }
+
+      renderJpegQueueUI();
+      processJpegBatch();
+    }
+
+    function selectJpegItem(idx) {
+      if (idx < 0 || idx >= jpegState.items.length) return;
+      jpegState.selectedIndex = idx;
+      const item = jpegState.items[idx];
+
+      const origCanvas = document.getElementById('jpeg-preview-orig');
+      origCanvas.width = item.sourceImg.width;
+      origCanvas.height = item.sourceImg.height;
+      origCanvas.getContext('2d').drawImage(item.sourceImg, 0, 0);
+      const origMP = ((item.sourceImg.width * item.sourceImg.height) / 1_000_000).toFixed(2);
+      document.getElementById('jpeg-orig-info').textContent = `${item.sourceImg.width}×${item.sourceImg.height} (${origMP}MP)`;
+
+      if (item.previewUrl) {
+        const outImg = document.getElementById('jpeg-preview-out');
+        outImg.src = item.previewUrl;
+        outImg.classList.remove('hidden');
+        document.getElementById('jpeg-placeholder-txt').classList.add('hidden');
+
+        document.getElementById('jpeg-dim-out').textContent = `${item.width} × ${item.height} px`;
+        document.getElementById('jpeg-mp-out').textContent = `${item.mp.toFixed(2)} MP`;
+        document.getElementById('jpeg-size-out').textContent = item.outputBlob ? formatBytes(item.outputBlob.size) : '—';
+
+        setRuleStatus('jpeg-rule-res', item.mp >= 4.0 && item.mp <= 100 ? 'pass' : 'fail', `${item.mp.toFixed(2)} MP (${item.width}×${item.height})`);
+        if (item.outputBlob && item.outputBlob.size <= MAX_IMAGE_BYTES) {
+          setRuleStatus('jpeg-rule-size', 'pass', `${formatBytes(item.outputBlob.size)} / 45MB`);
+          document.getElementById('jpeg-download-btn').disabled = false;
+        } else if (item.outputBlob) {
+          setRuleStatus('jpeg-rule-size', 'fail', `${formatBytes(item.outputBlob.size)} > 45MB!`);
+          document.getElementById('jpeg-download-btn').disabled = true;
+        }
+      }
+      renderJpegQueueUI();
+    }
+
+    function removeJpegItem(e, idx) {
+      e.stopPropagation();
+      jpegState.items.splice(idx, 1);
+      if (!jpegState.items.length) {
+        clearBatch('jpeg');
+        return;
+      }
+      if (jpegState.selectedIndex >= jpegState.items.length) {
+        jpegState.selectedIndex = jpegState.items.length - 1;
+      }
+      selectJpegItem(jpegState.selectedIndex);
+      updateJpegZipButton();
+    }
+
+    function renderJpegQueueUI() {
+      const card = document.getElementById('jpeg-queue-card');
+      const grid = document.getElementById('jpeg-queue-grid');
+      const countBadge = document.getElementById('jpeg-queue-count');
+      const procLabel = document.getElementById('jpeg-process-label');
+
+      if (!jpegState.items.length) {
+        card.classList.add('hidden');
+        procLabel.textContent = 'Convert All to Stock JPEG';
+        return;
+      }
+      card.classList.remove('hidden');
+      countBadge.textContent = `${jpegState.items.length} file${jpegState.items.length > 1 ? 's' : ''}`;
+      procLabel.textContent = `Convert All (${jpegState.items.length}) to Stock JPEG`;
+
+      grid.innerHTML = '';
+      jpegState.items.forEach((item, idx) => {
+        const isSelected = idx === jpegState.selectedIndex;
+        const origMP = ((item.sourceImg.width * item.sourceImg.height) / 1_000_000).toFixed(1);
+        const statusBadge = !item.outputBlob
+          ? `<span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-slate-200 dark:bg-studio-700 text-slate-600 dark:text-slate-300">QUEUED</span>`
+          : item.compliant
+            ? `<span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">PASS</span>`
+            : `<span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-rose-500/15 text-rose-600 dark:text-rose-400">FAIL</span>`;
+
+        const el = document.createElement('div');
+        el.onclick = () => selectJpegItem(idx);
+        el.className = `group relative flex items-center gap-2.5 p-2 rounded-xl border cursor-pointer transition ${
+          isSelected
+            ? 'border-indigo-600 bg-indigo-600/10'
+            : 'border-slate-200 dark:border-studio-800 bg-slate-50 dark:bg-studio-850 hover:border-indigo-400'
+        }`;
+        el.innerHTML = `
+          <img src="${item.previewUrl || item.sourceImg.src}" class="w-11 h-11 rounded-lg object-cover border border-slate-200 dark:border-studio-700 shrink-0" />
+          <div class="min-w-0 flex-1">
+            <div class="text-xs font-semibold truncate">${item.origName}</div>
+            <div class="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">
+              ${origMP}MP &rarr; ${item.mp ? item.mp.toFixed(1) + 'MP' : '—'} • ${item.outputBlob ? formatBytes(item.outputBlob.size) : 'Pending'}
+            </div>
+            <div class="mt-1 flex items-center gap-1.5">${statusBadge}</div>
+          </div>
+          <button type="button" onclick="removeJpegItem(event, ${idx})" title="Remove" class="p-1 rounded-lg text-slate-400 hover:text-rose-500 hover:bg-rose-500/10 transition">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+          </button>
+        `;
+        grid.appendChild(el);
+      });
+    }
+
+    function setJpegMP(val) {
+      const clamped = Math.max(4.1, Math.min(100, val));
+      document.getElementById('jpeg-mp-slider').value = clamped;
+      document.getElementById('jpeg-mp-badge').textContent = `${clamped.toFixed(1)} MP`;
+      if (jpegState.items.length) processJpegBatch();
+    }
+
+    document.getElementById('jpeg-mp-slider').addEventListener('input', (e) => {
+      document.getElementById('jpeg-mp-badge').textContent = `${parseFloat(e.target.value).toFixed(1)} MP`;
+    });
+    document.getElementById('jpeg-mp-slider').addEventListener('change', () => {
+      if (jpegState.items.length) processJpegBatch();
+    });
+    document.getElementById('jpeg-quality').addEventListener('input', (e) => {
+      document.getElementById('jpeg-quality-val').textContent = `${e.target.value}%`;
+    });
+    document.getElementById('jpeg-quality').addEventListener('change', () => {
+      if (jpegState.items.length) processJpegBatch();
+    });
+    document.getElementById('jpeg-matte-color').addEventListener('change', () => {
+      if (jpegState.items.length) processJpegBatch();
+    });
+
+    async function renderSingleJpegItem(item) {
+      const img = item.sourceImg;
+      const targetMP = parseFloat(document.getElementById('jpeg-mp-slider').value);
+      const quality = parseInt(document.getElementById('jpeg-quality').value, 10) / 100;
+      const matteColor = document.getElementById('jpeg-matte-color').value;
+
+      const dims = computeTargetDimensions(img.width, img.height, targetMP);
+      const canvas = document.createElement('canvas');
+      canvas.width = dims.width;
+      canvas.height = dims.height;
+      const ctx = canvas.getContext('2d');
+
+      ctx.fillStyle = matteColor;
+      ctx.fillRect(0, 0, dims.width, dims.height);
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = 'high';
+      ctx.drawImage(img, 0, 0, dims.width, dims.height);
+
+      const blob = await new Promise(res => canvas.toBlob(res, 'image/jpeg', quality));
+      if (!blob) throw new Error('Canvas memory limit reached for this resolution');
+      if (item.previewUrl) URL.revokeObjectURL(item.previewUrl);
+      item.previewUrl = URL.createObjectURL(blob);
+      item.outputBlob = blob;
+      item.width = dims.width;
+      item.height = dims.height;
+      item.mp = dims.mp;
+      item.compliant = blob.size <= MAX_IMAGE_BYTES && dims.mp >= 4.0 && dims.mp <= 100;
+    }
+
+    async function processJpegBatch() {
+      if (!jpegState.items.length) return;
+      const btn = document.getElementById('jpeg-process-btn');
+      const progWrap = document.getElementById('jpeg-batch-progress-wrap');
+      const progText = document.getElementById('jpeg-batch-progress-text');
+      const progPct = document.getElementById('jpeg-batch-progress-pct');
+      const progBar = document.getElementById('jpeg-batch-progress-bar');
+
+      btn.disabled = true;
+      progWrap.classList.remove('hidden');
+
+      try {
+        const total = jpegState.items.length;
+        const qualityPct = document.getElementById('jpeg-quality').value;
+        document.getElementById('jpeg-quality-badge').textContent = `Q: ${qualityPct}%`;
+
+        for (let i = 0; i < total; i++) {
+          progText.textContent = `Processing ${i + 1} / ${total}: ${jpegState.items[i].origName}`;
+          const pct = Math.round(((i + 1) / total) * 100);
+          progPct.textContent = `${pct}%`;
+          progBar.style.width = `${pct}%`;
+
+          await new Promise(r => setTimeout(r, 15));
+          await renderSingleJpegItem(jpegState.items[i]);
+          if (i === jpegState.selectedIndex) {
+            selectJpegItem(i);
+          }
+        }
+        selectJpegItem(jpegState.selectedIndex >= 0 ? jpegState.selectedIndex : 0);
+        updateJpegZipButton();
+        const passCount = jpegState.items.filter(x => x.compliant).length;
+        document.getElementById('jpeg-status-msg').innerHTML = `<span class="text-emerald-600 dark:text-emerald-400 font-semibold">Batch Complete!</span> ${passCount} of ${total} JPEG files compliant (&ge;4MP, &le;45MB).`;
+      } catch (err) {
+        console.error(err);
+        showToast('Batch error rendering JPEGs. Try lowering target MP if browser RAM is exceeded.', 'error');
+      } finally {
+        btn.disabled = false;
+        setTimeout(() => progWrap.classList.add('hidden'), 1200);
+      }
+    }
+
+    function updateJpegZipButton() {
+      const readyCount = jpegState.items.filter(x => x.outputBlob).length;
+      const zipBtn = document.getElementById('jpeg-zip-btn');
+      const zipLabel = document.getElementById('jpeg-zip-label');
+      zipBtn.disabled = readyCount === 0;
+      zipLabel.textContent = readyCount > 1 ? `Download All (${readyCount}) as ZIP` : 'Download ZIP';
+    }
+
+    function downloadJpeg() {
+      const item = jpegState.items[jpegState.selectedIndex];
+      if (!item || !item.outputBlob) return;
+      const url = URL.createObjectURL(item.outputBlob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = item.name;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 2000);
+      showToast(`Downloaded ${item.name}`, 'success');
+    }
+
+    async function downloadJpegZip() {
+      const readyItems = jpegState.items.filter(x => x.outputBlob);
+      if (!readyItems.length || !window.JSZip) return;
+      const zip = new JSZip();
+      readyItems.forEach((item, idx) => {
+        const safeName = `${String(idx + 1).padStart(2, '0')}-${item.name}`;
+        zip.file(safeName, item.outputBlob);
+      });
+      const content = await zip.generateAsync({ type: 'blob' });
+      const url = URL.createObjectURL(content);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `stock-jpeg-batch-${readyItems.length}-files.zip`;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 3000);
+      showToast(`Exported ${readyItems.length} JPEG files in ZIP!`, 'success');
+    }
+
+    // =========================================================================
+    // SECTION 3: VECTORS (SVG TRACER) BATCH LOGIC
+    // =========================================================================
+    const svgState = {
+      items: [],
+      selectedIndex: -1,
+      zoom: 1.0
+    };
+
+    bindDropzone('svg-dropzone', 'svg-file-input', async (files) => {
+      try {
+        const loaded = [];
+        for (const file of files) {
+          if (file.type.startsWith('image/')) {
+            const img = await loadImageFromFile(file);
+            loaded.push({ img, name: file.name });
+          }
+        }
+        if (!loaded.length) {
+          showToast('Please select valid image file(s) for vectorization.', 'warning');
+          return;
+        }
+        addSvgItems(loaded);
+      } catch (err) {
+        showToast('Could not load one or more files.', 'error');
+      }
+    });
+
+    function addSvgItems(entries) {
+      const startIdx = svgState.items.length;
+      entries.forEach((entry, i) => {
+        svgState.items.push({
+          id: Date.now() + '-' + i + '-' + Math.random().toString(36).slice(2, 6),
+          name: entry.name.replace(/\.[^/.]+$/, '') + '.svg',
+          origName: entry.name,
+          sourceImg: entry.img,
+          svgString: '',
+          byteSize: 0,
+          pathCount: 0,
+          width: 0,
+          height: 0,
+          mp: 0,
+          compliant: false
+        });
+      });
+
+      document.getElementById('svg-clear-batch').classList.remove('hidden');
+      document.getElementById('svg-process-btn').disabled = false;
+
+      if (svgState.selectedIndex === -1 && svgState.items.length > 0) {
+        svgState.selectedIndex = 0;
+      } else if (startIdx < svgState.items.length) {
+        svgState.selectedIndex = startIdx;
+      }
+
+      renderSvgQueueUI();
+      processSvgBatch();
+    }
+
+    function selectSvgItem(idx) {
+      if (idx < 0 || idx >= svgState.items.length) return;
+      svgState.selectedIndex = idx;
+      const item = svgState.items[idx];
+
+      const origCanvas = document.getElementById('svg-preview-orig');
+      origCanvas.width = item.sourceImg.width;
+      origCanvas.height = item.sourceImg.height;
+      origCanvas.getContext('2d').drawImage(item.sourceImg, 0, 0);
+      document.getElementById('svg-orig-info').textContent = `${item.sourceImg.width}×${item.sourceImg.height} px`;
+
+      if (item.svgString) {
+        const container = document.getElementById('svg-output-container');
+        container.innerHTML = item.svgString;
+        const svgEl = container.querySelector('svg');
+        if (svgEl) {
+          svgEl.style.maxWidth = '100%';
+          svgEl.style.maxHeight = '290px';
+          svgEl.style.width = 'auto';
+          svgEl.style.height = 'auto';
+          svgEl.style.transform = `scale(${svgState.zoom})`;
+          svgEl.style.transformOrigin = 'center center';
+        }
+
+        document.getElementById('svg-dim-out').textContent = `${item.width} × ${item.height} px`;
+        document.getElementById('svg-mp-out').textContent = `${item.mp.toFixed(2)} MP`;
+        document.getElementById('svg-size-out').textContent = formatBytes(item.byteSize);
+        document.getElementById('svg-path-count').textContent = `${item.pathCount.toLocaleString()} vector paths`;
+
+        setRuleStatus('svg-rule-min', item.mp >= 15.0 ? 'pass' : 'fail', `${item.mp.toFixed(1)} MP >= 15MP`);
+        setRuleStatus('svg-rule-max', item.mp <= 65.0 ? 'pass' : 'fail', `${item.mp.toFixed(1)} MP <= 65MP`);
+
+        if (item.byteSize <= MAX_IMAGE_BYTES) {
+          setRuleStatus('svg-rule-size', 'pass', `${formatBytes(item.byteSize)} / 45MB`);
+          document.getElementById('svg-download-btn').disabled = false;
+        } else {
+          setRuleStatus('svg-rule-size', 'fail', `${formatBytes(item.byteSize)} > 45MB`);
+          document.getElementById('svg-download-btn').disabled = true;
+        }
+      }
+      renderSvgQueueUI();
+    }
+
+    function removeSvgItem(e, idx) {
+      e.stopPropagation();
+      svgState.items.splice(idx, 1);
+      if (!svgState.items.length) {
+        clearBatch('svg');
+        return;
+      }
+      if (svgState.selectedIndex >= svgState.items.length) {
+        svgState.selectedIndex = svgState.items.length - 1;
+      }
+      selectSvgItem(svgState.selectedIndex);
+      updateSvgZipButton();
+    }
+
+    function renderSvgQueueUI() {
+      const card = document.getElementById('svg-queue-card');
+      const grid = document.getElementById('svg-queue-grid');
+      const countBadge = document.getElementById('svg-queue-count');
+      const procLabel = document.getElementById('svg-process-label');
+
+      if (!svgState.items.length) {
+        card.classList.add('hidden');
+        procLabel.textContent = 'Vectorize All to Scalable SVG';
+        return;
+      }
+      card.classList.remove('hidden');
+      countBadge.textContent = `${svgState.items.length} file${svgState.items.length > 1 ? 's' : ''}`;
+      procLabel.textContent = `Vectorize All (${svgState.items.length}) to Scalable SVG`;
+
+      grid.innerHTML = '';
+      svgState.items.forEach((item, idx) => {
+        const isSelected = idx === svgState.selectedIndex;
+        const statusBadge = !item.svgString
+          ? `<span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-slate-200 dark:bg-studio-700 text-slate-600 dark:text-slate-300">QUEUED</span>`
+          : item.compliant
+            ? `<span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">PASS</span>`
+            : `<span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-rose-500/15 text-rose-600 dark:text-rose-400">FAIL</span>`;
+
+        const el = document.createElement('div');
+        el.onclick = () => selectSvgItem(idx);
+        el.className = `group relative flex items-center gap-2.5 p-2 rounded-xl border cursor-pointer transition ${
+          isSelected
+            ? 'border-purple-600 bg-purple-600/10'
+            : 'border-slate-200 dark:border-studio-800 bg-slate-50 dark:bg-studio-850 hover:border-purple-400'
+        }`;
+        el.innerHTML = `
+          <img src="${item.sourceImg.src}" class="w-11 h-11 rounded-lg object-cover checkerboard border border-slate-200 dark:border-studio-700 shrink-0" />
+          <div class="min-w-0 flex-1">
+            <div class="text-xs font-semibold truncate">${item.origName}</div>
+            <div class="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">
+              ${item.mp ? item.mp.toFixed(1) + 'MP Artboard' : 'Pending'} • ${item.byteSize ? formatBytes(item.byteSize) : '—'}
+            </div>
+            <div class="mt-1 flex items-center gap-1.5">
+              ${statusBadge}
+              ${item.pathCount ? `<span class="text-[10px] text-slate-400">${item.pathCount} paths</span>` : ''}
+            </div>
+          </div>
+          <button type="button" onclick="removeSvgItem(event, ${idx})" title="Remove" class="p-1 rounded-lg text-slate-400 hover:text-rose-500 hover:bg-rose-500/10 transition">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+          </button>
+        `;
+        grid.appendChild(el);
+      });
+    }
+
+    function setSvgMP(val) {
+      const clamped = Math.max(15, Math.min(65, val));
+      document.getElementById('svg-mp-slider').value = clamped;
+      document.getElementById('svg-mp-badge').textContent = `${clamped.toFixed(1)} MP`;
+      if (svgState.items.length) processSvgBatch();
+    }
+
+    document.getElementById('svg-mp-slider').addEventListener('input', (e) => {
+      document.getElementById('svg-mp-badge').textContent = `${parseFloat(e.target.value).toFixed(1)} MP`;
+    });
+    document.getElementById('svg-mp-slider').addEventListener('change', () => {
+      if (svgState.items.length) processSvgBatch();
+    });
+    document.getElementById('svg-colors').addEventListener('input', (e) => {
+      document.getElementById('svg-colors-val').textContent = e.target.value;
+    });
+    document.getElementById('svg-colors').addEventListener('change', () => {
+      if (svgState.items.length) processSvgBatch();
+    });
+    document.getElementById('svg-smooth').addEventListener('input', (e) => {
+      document.getElementById('svg-smooth-val').textContent = parseFloat(e.target.value).toFixed(1);
+    });
+    document.getElementById('svg-smooth').addEventListener('change', () => {
+      if (svgState.items.length) processSvgBatch();
+    });
+
+    function applySvgPreset() {
+      const preset = document.getElementById('svg-preset').value;
+      const colorsEl = document.getElementById('svg-colors');
+      const smoothEl = document.getElementById('svg-smooth');
+      if (preset === 'detailed') { colorsEl.value = 16; smoothEl.value = 1.0; }
+      if (preset === 'flat') { colorsEl.value = 8; smoothEl.value = 1.4; }
+      if (preset === 'logo') { colorsEl.value = 3; smoothEl.value = 1.8; }
+      if (preset === 'ultraclean') { colorsEl.value = 12; smoothEl.value = 2.4; }
+      document.getElementById('svg-colors-val').textContent = colorsEl.value;
+      document.getElementById('svg-smooth-val').textContent = parseFloat(smoothEl.value).toFixed(1);
+      if (svgState.items.length) processSvgBatch();
+    }
+
+    function zoomSvg(factor) {
+      svgState.zoom = Math.max(0.25, Math.min(4, svgState.zoom * factor));
+      document.getElementById('svg-zoom-label').textContent = `${Math.round(svgState.zoom * 100)}%`;
+      const svgEl = document.querySelector('#svg-output-container svg');
+      if (svgEl) {
+        svgEl.style.transform = `scale(${svgState.zoom})`;
+        svgEl.style.transformOrigin = 'center center';
+      }
+    }
+
+    function renderSingleSvgItem(item) {
+      const img = item.sourceImg;
+      const targetArtboardMP = parseFloat(document.getElementById('svg-mp-slider').value);
+      const colorCount = parseInt(document.getElementById('svg-colors').value, 10);
+      const smooth = parseFloat(document.getElementById('svg-smooth').value);
+
+      const traceMax = 420;
+      const scale = Math.min(1, traceMax / Math.max(img.width, img.height));
+      const tW = Math.max(32, Math.round(img.width * scale));
+      const tH = Math.max(32, Math.round(img.height * scale));
+
+      const c = document.createElement('canvas');
+      c.width = tW;
+      c.height = tH;
+      const ctx = c.getContext('2d');
+      ctx.drawImage(img, 0, 0, tW, tH);
+      const imgData = ctx.getImageData(0, 0, tW, tH);
+
+      const artboard = computeTargetDimensions(img.width, img.height, targetArtboardMP);
+
+      let rawSvg = '';
+      if (window.ImageTracer) {
+        const options = {
+          ltres: smooth,
+          qtres: smooth,
+          pathomit: Math.round(smooth * 6),
+          colorsampling: 2,
+          numberofcolors: colorCount,
+          mincolorratio: 0,
+          colorquantcycles: 3,
+          scale: 1,
+          roundcoords: 1,
+          viewbox: true,
+          desc: false
+        };
+        rawSvg = window.ImageTracer.imagedataToSVG(imgData, options);
+        const scaleX = (artboard.width / tW).toFixed(4);
+        const scaleY = (artboard.height / tH).toFixed(4);
+        rawSvg = rawSvg.replace(
+          /<svg[^>]*>/i,
+          `<svg xmlns="http://www.w3.org/2000/svg" version="1.1" width="${artboard.width}px" height="${artboard.height}px" viewBox="0 0 ${artboard.width} ${artboard.height}"><g transform="scale(${scaleX}, ${scaleY})">`
+        ).replace(/<\/svg>/i, '</g></svg>');
+      } else {
+        rawSvg = fallbackVectorize(imgData, tW, tH, artboard.width, artboard.height, colorCount);
+      }
+
+      const byteSize = new Blob([rawSvg], { type: 'image/svg+xml' }).size;
+      const pathMatches = rawSvg.match(/<path/gi);
+      const pathCount = pathMatches ? pathMatches.length : 0;
+
+      item.svgString = rawSvg;
+      item.byteSize = byteSize;
+      item.pathCount = pathCount;
+      item.width = artboard.width;
+      item.height = artboard.height;
+      item.mp = artboard.mp;
+      item.compliant = byteSize <= MAX_IMAGE_BYTES && artboard.mp >= 15.0 && artboard.mp <= 65.0;
+    }
+
+    async function processSvgBatch() {
+      if (!svgState.items.length) return;
+      const btn = document.getElementById('svg-process-btn');
+      const progWrap = document.getElementById('svg-batch-progress-wrap');
+      const progText = document.getElementById('svg-batch-progress-text');
+      const progPct = document.getElementById('svg-batch-progress-pct');
+      const progBar = document.getElementById('svg-batch-progress-bar');
+
+      btn.disabled = true;
+      progWrap.classList.remove('hidden');
+
+      try {
+        const total = svgState.items.length;
+        for (let i = 0; i < total; i++) {
+          progText.textContent = `Tracing ${i + 1} / ${total}: ${svgState.items[i].origName}`;
+          const pct = Math.round(((i + 1) / total) * 100);
+          progPct.textContent = `${pct}%`;
+          progBar.style.width = `${pct}%`;
+
+          await new Promise(r => setTimeout(r, 20));
+          renderSingleSvgItem(svgState.items[i]);
+          if (i === svgState.selectedIndex) {
+            selectSvgItem(i);
+          }
+        }
+        selectSvgItem(svgState.selectedIndex >= 0 ? svgState.selectedIndex : 0);
+        updateSvgZipButton();
+      } catch (err) {
+        console.error(err);
+        showToast('Batch error tracing SVGs.', 'error');
+      } finally {
+        btn.disabled = false;
+        setTimeout(() => progWrap.classList.add('hidden'), 1200);
+      }
+    }
+
+    function updateSvgZipButton() {
+      const readyCount = svgState.items.filter(x => x.svgString).length;
+      const zipBtn = document.getElementById('svg-zip-btn');
+      const zipLabel = document.getElementById('svg-zip-label');
+      zipBtn.disabled = readyCount === 0;
+      zipLabel.textContent = readyCount > 1 ? `Download All (${readyCount}) as ZIP` : 'Download ZIP';
+    }
+
+    function fallbackVectorize(imgData, w, h, artW, artH, colors) {
+      const step = Math.max(1, Math.round(256 / Math.max(2, Math.cbrt(colors))));
+      const buckets = new Map();
+      const d = imgData.data;
+      for (let y = 0; y < h; y++) {
+        let x = 0;
+        while (x < w) {
+          const i = (y * w + x) * 4;
+          if (d[i + 3] < 128) { x++; continue; }
+          const r = Math.min(255, Math.round(d[i] / step) * step);
+          const g = Math.min(255, Math.round(d[i + 1] / step) * step);
+          const b = Math.min(255, Math.round(d[i + 2] / step) * step);
+          const hex = `#${[r, g, b].map(v => v.toString(16).padStart(2, '0')).join('')}`;
+          let run = 1;
+          while (x + run < w) {
+            const ni = (y * w + x + run) * 4;
+            if (d[ni + 3] < 128) break;
+            const nr = Math.min(255, Math.round(d[ni] / step) * step);
+            const ng = Math.min(255, Math.round(d[ni + 1] / step) * step);
+            const nb = Math.min(255, Math.round(d[ni + 2] / step) * step);
+            if (nr !== r || ng !== g || nb !== b) break;
+            run++;
+          }
+          if (!buckets.has(hex)) buckets.set(hex, []);
+          buckets.get(hex).push(`M${x} ${y}h${run}v1h-${run}z`);
+          x += run;
+        }
+      }
+      const sx = (artW / w).toFixed(4);
+      const sy = (artH / h).toFixed(4);
+      let paths = '';
+      buckets.forEach((cmds, color) => {
+        paths += `<path fill="${color}" d="${cmds.join('')}"/>`;
+      });
+      return `<svg xmlns="http://www.w3.org/2000/svg" width="${artW}px" height="${artH}px" viewBox="0 0 ${artW} ${artH}"><g transform="scale(${sx},${sy})">${paths}</g></svg>`;
+    }
+
+    function downloadSvg() {
+      const item = svgState.items[svgState.selectedIndex];
+      if (!item || !item.svgString) return;
+      const blob = new Blob([item.svgString], { type: 'image/svg+xml;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = item.name;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 2000);
+      showToast(`Downloaded ${item.name}`, 'success');
+    }
+
+    async function downloadSvgZip() {
+      const readyItems = svgState.items.filter(x => x.svgString);
+      if (!readyItems.length || !window.JSZip) return;
+      const zip = new JSZip();
+      readyItems.forEach((item, idx) => {
+        const safeName = `${String(idx + 1).padStart(2, '0')}-${item.name}`;
+        zip.file(safeName, item.svgString);
+      });
+      const content = await zip.generateAsync({ type: 'blob' });
+      const url = URL.createObjectURL(content);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `vectors-svg-batch-${readyItems.length}-files.zip`;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 3000);
+      showToast(`Exported ${readyItems.length} Scalable SVGs in ZIP!`, 'success');
+    }
+
+    // =========================================================================
+    // SECTION 4: VIDEOS (SLIDESHOW + INDIVIDUAL BATCH) LOGIC
+    // =========================================================================
+    const vidState = {
+      items: [],
+      selectedIndex: 0,
+      batchMode: 'slideshow',
+      resPreset: '1080p',
+      aspect: '16:9',
+      isPreviewPlaying: false,
+      isRendering: false,
+      cancelRequested: false,
+      animFrameId: null,
+      recorder: null,
+      slideshowBlob: null,
+      outputExt: 'mp4'
+    };
+
+    bindDropzone('vid-dropzone', 'vid-file-input', async (files) => {
+      try {
+        const loaded = [];
+        for (const f of files) {
+          if (f.type.startsWith('image/')) {
+            loaded.push({ img: await loadImageFromFile(f), name: f.name });
+          }
+        }
+        if (!loaded.length) {
+          showToast('Please select valid image file(s).', 'warning');
+          return;
+        }
+        addVideoItems(loaded);
+        showToast(`Added ${loaded.length} image(s) to Video Queue.`, 'success');
+      } catch (err) {
+        showToast('Failed to load one or more images.', 'error');
+      }
+    });
+
+    function addVideoItems(entries) {
+      entries.forEach((entry, i) => {
+        vidState.items.push({
+          id: Date.now() + '-' + i + '-' + Math.random().toString(36).slice(2, 6),
+          origName: entry.name,
+          img: entry.img,
+          videoBlob: null,
+          videoUrl: null,
+          ext: 'mp4'
+        });
+      });
+      updateVideoThumbStrip();
+      renderVideoQueueUI();
+      updateVideoStagePreview();
+      document.getElementById('vid-preview-btn').disabled = false;
+      document.getElementById('vid-render-btn').disabled = false;
+    }
+
+    function setVidBatchMode(mode) {
+      vidState.batchMode = mode;
+      const btnSlide = document.getElementById('vid-mode-slideshow');
+      const btnSep = document.getElementById('vid-mode-separate');
+      const zipBtn = document.getElementById('vid-zip-btn');
+      const renderBtn = document.getElementById('vid-render-btn');
+
+      if (mode === 'slideshow') {
+        btnSlide.className = 'p-2.5 rounded-xl border-2 border-rose-600 bg-rose-600/10 text-left transition';
+        btnSlide.querySelector('div:first-child').className = 'text-xs font-bold text-rose-600 dark:text-rose-400';
+        btnSep.className = 'p-2.5 rounded-xl border border-slate-200 dark:border-studio-700 text-left hover:border-rose-500 transition';
+        btnSep.querySelector('div:first-child').className = 'text-xs font-bold';
+        zipBtn.classList.add('hidden');
+        renderBtn.textContent = 'Render Slideshow Video';
+      } else {
+        btnSep.className = 'p-2.5 rounded-xl border-2 border-rose-600 bg-rose-600/10 text-left transition';
+        btnSep.querySelector('div:first-child').className = 'text-xs font-bold text-rose-600 dark:text-rose-400';
+        btnSlide.className = 'p-2.5 rounded-xl border border-slate-200 dark:border-studio-700 text-left hover:border-rose-500 transition';
+        btnSlide.querySelector('div:first-child').className = 'text-xs font-bold';
+        zipBtn.classList.remove('hidden');
+        renderBtn.textContent = `Render All (${vidState.items.length || 0}) Videos`;
+      }
+      renderVideoQueueUI();
+      updateVideoStagePreview();
+    }
+
+    function clearVideoImages() {
+      stopVideoLoops();
+      vidState.items = [];
+      vidState.selectedIndex = 0;
+      vidState.slideshowBlob = null;
+      updateVideoThumbStrip();
+      renderVideoQueueUI();
+      document.getElementById('vid-preview-btn').disabled = true;
+      document.getElementById('vid-render-btn').disabled = true;
+      document.getElementById('vid-download-btn').disabled = true;
+      document.getElementById('vid-zip-btn').disabled = true;
+      document.getElementById('vid-playback-player').classList.add('hidden');
+      document.getElementById('vid-stage-canvas').classList.remove('hidden');
+      const canvas = document.getElementById('vid-stage-canvas');
+      const ctx = canvas.getContext('2d');
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+    }
+
+    function removeVideoItem(e, idx) {
+      e.stopPropagation();
+      vidState.items.splice(idx, 1);
+      if (!vidState.items.length) {
+        clearVideoImages();
+        return;
+      }
+      if (vidState.selectedIndex >= vidState.items.length) {
+        vidState.selectedIndex = vidState.items.length - 1;
+      }
+      updateVideoThumbStrip();
+      renderVideoQueueUI();
+      updateVideoStagePreview();
+    }
+
+    function selectVideoItem(idx) {
+      if (idx < 0 || idx >= vidState.items.length) return;
+      vidState.selectedIndex = idx;
+      const item = vidState.items[idx];
+      renderVideoQueueUI();
+
+      if (vidState.batchMode === 'separate' && item.videoUrl) {
+        const player = document.getElementById('vid-playback-player');
+        player.src = item.videoUrl;
+        document.getElementById('vid-stage-canvas').classList.add('hidden');
+        player.classList.remove('hidden');
+        document.getElementById('vid-download-btn').disabled = false;
+        document.getElementById('vid-download-label').textContent = `Download Clip #${idx + 1}`;
+      } else {
+        document.getElementById('vid-playback-player').classList.add('hidden');
+        document.getElementById('vid-stage-canvas').classList.remove('hidden');
+        updateVideoStagePreview();
+      }
+    }
+
+    function renderVideoQueueUI() {
+      const card = document.getElementById('vid-queue-card');
+      const grid = document.getElementById('vid-queue-grid');
+      const countBadge = document.getElementById('vid-queue-count');
+      const renderBtn = document.getElementById('vid-render-btn');
+
+      if (!vidState.items.length) {
+        card.classList.add('hidden');
+        return;
+      }
+      card.classList.remove('hidden');
+      countBadge.textContent = `${vidState.items.length} file${vidState.items.length > 1 ? 's' : ''}`;
+      if (vidState.batchMode === 'separate') {
+        renderBtn.textContent = `Render All (${vidState.items.length}) Videos`;
+      } else {
+        renderBtn.textContent = 'Render & Export Video';
+      }
+
+      grid.innerHTML = '';
+      vidState.items.forEach((item, idx) => {
+        const isSelected = idx === vidState.selectedIndex;
+        const statusBadge = vidState.batchMode === 'slideshow'
+          ? `<span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-rose-500/15 text-rose-600 dark:text-rose-400">SLIDE #${idx + 1}</span>`
+          : item.videoBlob
+            ? `<span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">RENDERED (${formatBytes(item.videoBlob.size)})</span>`
+            : `<span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-slate-200 dark:bg-studio-700 text-slate-600 dark:text-slate-300">QUEUED</span>`;
+
+        const el = document.createElement('div');
+        el.onclick = () => selectVideoItem(idx);
+        el.className = `group relative flex items-center gap-2.5 p-2 rounded-xl border cursor-pointer transition ${
+          isSelected
+            ? 'border-rose-600 bg-rose-600/10'
+            : 'border-slate-200 dark:border-studio-800 bg-slate-50 dark:bg-studio-850 hover:border-rose-400'
+        }`;
+        el.innerHTML = `
+          <img src="${item.img.src}" class="w-11 h-11 rounded-lg object-cover border border-slate-200 dark:border-studio-700 shrink-0" />
+          <div class="min-w-0 flex-1">
+            <div class="text-xs font-semibold truncate">${item.origName}</div>
+            <div class="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">${item.img.width}×${item.img.height} px</div>
+            <div class="mt-1">${statusBadge}</div>
+          </div>
+          <button type="button" onclick="removeVideoItem(event, ${idx})" title="Remove" class="p-1 rounded-lg text-slate-400 hover:text-rose-500 hover:bg-rose-500/10 transition">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+          </button>
+        `;
+        grid.appendChild(el);
+      });
+    }
+
+    function updateVideoThumbStrip() {
+      const strip = document.getElementById('vid-thumb-strip');
+      const clearBtn = document.getElementById('vid-clear-imgs');
+      if (!vidState.items.length) {
+        strip.classList.add('hidden');
+        clearBtn.classList.add('hidden');
+        return;
+      }
+      strip.classList.remove('hidden');
+      clearBtn.classList.remove('hidden');
+      strip.innerHTML = '';
+      vidState.items.forEach((item, idx) => {
+        const thumb = document.createElement('img');
+        thumb.src = item.img.src;
+        thumb.title = `Slide ${idx + 1}`;
+        thumb.className = 'w-11 h-11 object-cover rounded-lg border border-slate-300 dark:border-studio-700 shrink-0';
+        strip.appendChild(thumb);
+      });
+    }
+
+    function getVideoDimensions() {
+      const baseMap = {
+        '720p': { long: 1280, short: 720 },
+        '1080p': { long: 1920, short: 1080 },
+        '4k': { long: 3840, short: 2160 }
+      };
+      const b = baseMap[vidState.resPreset];
+      if (vidState.aspect === '16:9') return { width: b.long, height: b.short };
+      if (vidState.aspect === '9:16') return { width: b.short, height: b.long };
+      return { width: b.short, height: b.short };
+    }
+
+    function setVidRes(preset) {
+      vidState.resPreset = preset;
+      document.querySelectorAll('.vid-res-btn').forEach(btn => {
+        btn.className = 'vid-res-btn p-2 rounded-xl border border-slate-200 dark:border-studio-700 text-left hover:border-rose-500 transition';
+        btn.querySelector('div:first-child').className = 'text-xs font-bold';
+      });
+      const active = document.getElementById(`vid-res-${preset}`);
+      active.className = 'vid-res-btn p-2 rounded-xl border-2 border-rose-600 bg-rose-600/10 text-left transition';
+      active.querySelector('div:first-child').className = 'text-xs font-bold text-rose-600 dark:text-rose-400';
+      updateVideoMetadataUI();
+      updateVideoStagePreview();
+    }
+
+    function setVidAspect(aspect) {
+      vidState.aspect = aspect;
+      document.querySelectorAll('.vid-aspect-btn').forEach(btn => {
+        btn.className = 'vid-aspect-btn py-1.5 rounded-lg text-xs font-semibold bg-slate-100 dark:bg-studio-800 text-slate-600 dark:text-slate-300';
+      });
+      const active = document.getElementById(`vid-aspect-${aspect}`);
+      active.className = 'vid-aspect-btn py-1.5 rounded-lg text-xs font-semibold bg-rose-600 text-white';
+      updateVideoMetadataUI();
+      updateVideoStagePreview();
+    }
+
+    document.getElementById('vid-duration').addEventListener('input', (e) => {
+      const val = Math.max(5, Math.min(60, parseInt(e.target.value, 10)));
+      document.getElementById('vid-duration-val').textContent = `${val} seconds`;
+      updateVideoMetadataUI();
+    });
+
+    function updateVideoMetadataUI() {
+      const dims = getVideoDimensions();
+      const dur = parseInt(document.getElementById('vid-duration').value, 10);
+      const bitrateMbps = vidState.resPreset === '4k' ? 35 : vidState.resPreset === '1080p' ? 14 : 7;
+      const estMB = ((bitrateMbps * dur) / 8).toFixed(1);
+
+      document.getElementById('vid-dim-out').innerHTML = `${dims.width}&times;${dims.height}`;
+      document.getElementById('vid-dur-out').textContent = `${dur}s`;
+      document.getElementById('vid-size-out').textContent = `~${estMB} MB`;
+
+      const labelMap = { '720p': 'HD 720p', '1080p': 'Full HD', '4k': '4K UHD' };
+      setRuleStatus('vid-rule-res', 'pass', `${dims.width}x${dims.height} ${labelMap[vidState.resPreset]}`);
+      setRuleStatus('vid-rule-dur', dur >= 5 && dur <= 60 ? 'pass' : 'fail', `${dur}s selected`);
+    }
+
+    function renderVideoFrameAt(ctx, width, height, progress, imageList) {
+      ctx.fillStyle = '#000000';
+      ctx.fillRect(0, 0, width, height);
+      if (!imageList || !imageList.length) return;
+
+      const motion = document.getElementById('vid-motion').value;
+      const count = imageList.length;
+      const segLen = 1 / count;
+      const idx = Math.min(count - 1, Math.floor(progress / segLen));
+      const localT = (progress - idx * segLen) / segLen;
+
+      const drawSlide = (img, t, alpha) => {
+        ctx.save();
+        ctx.globalAlpha = alpha;
+        const imgAspect = img.width / img.height;
+        const canvasAspect = width / height;
+        let baseW, baseH;
+        if (imgAspect > canvasAspect) {
+          baseH = height;
+          baseW = height * imgAspect;
+        } else {
+          baseW = width;
+          baseH = width / imgAspect;
+        }
+
+        let scale = 1.0;
+        let offsetX = 0;
+        let offsetY = 0;
+
+        if (motion === 'zoom-in') {
+          scale = 1.0 + 0.14 * t;
+        } else if (motion === 'zoom-out') {
+          scale = 1.14 - 0.14 * t;
+        } else if (motion === 'pan-right') {
+          scale = 1.12;
+          offsetX = (t - 0.5) * (baseW * 0.1);
+        } else if (motion === 'float') {
+          scale = 1.08 + 0.04 * Math.sin(t * Math.PI);
+          offsetY = Math.sin(t * Math.PI * 2) * (baseH * 0.025);
+        } else {
+          scale = 1.0;
+        }
+
+        const drawW = baseW * scale;
+        const drawH = baseH * scale;
+        const dx = (width - drawW) / 2 + offsetX;
+        const dy = (height - drawH) / 2 + offsetY;
+        ctx.drawImage(img, dx, dy, drawW, drawH);
+        ctx.restore();
+      };
+
+      drawSlide(imageList[idx], localT, 1.0);
+
+      if (count > 1 && idx < count - 1 && localT > 0.82) {
+        const fadeT = (localT - 0.82) / 0.18;
+        drawSlide(imageList[idx + 1], 0, fadeT);
+      }
+    }
+
+    function getActivePreviewImageList() {
+      if (!vidState.items.length) return [];
+      if (vidState.batchMode === 'separate') {
+        const item = vidState.items[vidState.selectedIndex] || vidState.items[0];
+        return [item.img];
+      }
+      return vidState.items.map(x => x.img);
+    }
+
+    function updateVideoStagePreview() {
+      const dims = getVideoDimensions();
+      const canvas = document.getElementById('vid-stage-canvas');
+      canvas.width = dims.width;
+      canvas.height = dims.height;
+      const ctx = canvas.getContext('2d');
+      renderVideoFrameAt(ctx, dims.width, dims.height, 0, getActivePreviewImageList());
+    }
+
+    function stopVideoLoops() {
+      vidState.isPreviewPlaying = false;
+      if (vidState.animFrameId) {
+        cancelAnimationFrame(vidState.animFrameId);
+        vidState.animFrameId = null;
+      }
+      document.getElementById('vid-preview-btn').textContent = 'Live Preview Motion';
+    }
+
+    function toggleVideoPreviewPlay() {
+      if (!vidState.items.length) return;
+      if (vidState.isPreviewPlaying) {
+        stopVideoLoops();
+        return;
+      }
+      document.getElementById('vid-playback-player').classList.add('hidden');
+      document.getElementById('vid-stage-canvas').classList.remove('hidden');
+
+      vidState.isPreviewPlaying = true;
+      document.getElementById('vid-preview-btn').textContent = 'Stop Preview';
+      const durMs = parseInt(document.getElementById('vid-duration').value, 10) * 1000;
+      const startTime = performance.now();
+      const canvas = document.getElementById('vid-stage-canvas');
+      const ctx = canvas.getContext('2d');
+      const imgList = getActivePreviewImageList();
+
+      const tick = (now) => {
+        if (!vidState.isPreviewPlaying) return;
+        const elapsed = (now - startTime) % durMs;
+        renderVideoFrameAt(ctx, canvas.width, canvas.height, elapsed / durMs, imgList);
+        vidState.animFrameId = requestAnimationFrame(tick);
+      };
+      vidState.animFrameId = requestAnimationFrame(tick);
+    }
+
+    function getSupportedVideoMime() {
+      const candidates = [
+        { mime: 'video/mp4;codecs=avc1.42E01E', ext: 'mp4', label: 'H.264 (.mp4)' },
+        { mime: 'video/mp4', ext: 'mp4', label: 'MP4 Video (.mp4)' },
+        { mime: 'video/webm;codecs=vp9', ext: 'webm', label: 'VP9 (.webm)' },
+        { mime: 'video/webm', ext: 'webm', label: 'WebM Video (.webm)' }
+      ];
+      if (typeof MediaRecorder !== 'undefined') {
+        for (const c of candidates) {
+          if (MediaRecorder.isTypeSupported(c.mime)) return c;
+        }
+      }
+      return { mime: '', ext: 'webm', label: 'Standard Stream' };
+    }
+
+    function encodeClipFromImages(imageList, dims, durationSec, fps, bitrate, formatInfo, labelPrefix) {
+      return new Promise((resolve) => {
+        const canvas = document.getElementById('vid-stage-canvas');
+        canvas.width = dims.width;
+        canvas.height = dims.height;
+        const ctx = canvas.getContext('2d');
+
+        const stream = canvas.captureStream(fps);
+        const options = formatInfo.mime
+          ? { mimeType: formatInfo.mime, videoBitsPerSecond: bitrate }
+          : { videoBitsPerSecond: bitrate };
+
+        let recorder;
+        try {
+          recorder = new MediaRecorder(stream, options);
+        } catch (e) {
+          recorder = new MediaRecorder(stream);
+        }
+        vidState.recorder = recorder;
+
+        const chunks = [];
+        recorder.ondataavailable = (e) => {
+          if (e.data && e.data.size > 0) chunks.push(e.data);
+        };
+
+        recorder.onstop = () => {
+          if (vidState.cancelRequested || !chunks.length) {
+            resolve(null);
+            return;
+          }
+          resolve(new Blob(chunks, { type: formatInfo.mime || 'video/webm' }));
+        };
+
+        const totalMs = durationSec * 1000;
+        const startTime = performance.now();
+        recorder.start(250);
+
+        const renderLoop = (now) => {
+          if (vidState.cancelRequested) {
+            if (recorder.state !== 'inactive') recorder.stop();
+            return;
+          }
+          const elapsed = now - startTime;
+          const progress = Math.min(1, elapsed / totalMs);
+          renderVideoFrameAt(ctx, dims.width, dims.height, progress, imageList);
+
+          const pct = Math.round(progress * 100);
+          document.getElementById('vid-progress-label').textContent = labelPrefix;
+          document.getElementById('vid-progress-bar').style.width = `${pct}%`;
+          document.getElementById('vid-progress-pct').textContent = `${pct}%`;
+          document.getElementById('vid-progress-time').textContent = `${(elapsed / 1000).toFixed(1)}s / ${durationSec}.0s`;
+
+          if (progress < 1) {
+            vidState.animFrameId = requestAnimationFrame(renderLoop);
+          } else {
+            if (recorder.state !== 'inactive') recorder.stop();
+          }
+        };
+        vidState.animFrameId = requestAnimationFrame(renderLoop);
+      });
+    }
+
+    async function startVideoRender() {
+      if (!vidState.items.length || vidState.isRendering) return;
+      stopVideoLoops();
+
+      const dims = getVideoDimensions();
+      const durationSec = Math.max(5, Math.min(60, parseInt(document.getElementById('vid-duration').value, 10)));
+      const fps = parseInt(document.getElementById('vid-fps').value, 10);
+      const bitrate = vidState.resPreset === '4k' ? 35_000_000 : vidState.resPreset === '1080p' ? 14_000_000 : 7_000_000;
+      const formatInfo = getSupportedVideoMime();
+      vidState.outputExt = formatInfo.ext;
+      setRuleStatus('vid-rule-format', 'pass', formatInfo.label);
+
+      vidState.isRendering = true;
+      vidState.cancelRequested = false;
+
+      document.getElementById('vid-playback-player').classList.add('hidden');
+      document.getElementById('vid-stage-canvas').classList.remove('hidden');
+      document.getElementById('vid-render-btn').disabled = true;
+      document.getElementById('vid-progress-overlay').classList.remove('hidden');
+      document.getElementById('vid-rec-indicator').classList.remove('hidden');
+      document.getElementById('vid-rec-indicator').classList.add('flex');
+
+      try {
+        if (vidState.batchMode === 'slideshow') {
+          const allImgs = vidState.items.map(x => x.img);
+          const blob = await encodeClipFromImages(
+            allImgs, dims, durationSec, fps, bitrate, formatInfo,
+            `Encoding Slideshow (${allImgs.length} slides)...`
+          );
+          if (blob && !vidState.cancelRequested) {
+            vidState.slideshowBlob = blob;
+            const player = document.getElementById('vid-playback-player');
+            player.src = URL.createObjectURL(blob);
+            document.getElementById('vid-stage-canvas').classList.add('hidden');
+            player.classList.remove('hidden');
+
+            document.getElementById('vid-size-out').textContent = formatBytes(blob.size);
+            document.getElementById('vid-download-label').textContent = `Download .${vidState.outputExt.toUpperCase()} (${formatBytes(blob.size)})`;
+
+            if (blob.size <= MAX_VIDEO_BYTES) {
+              setRuleStatus('vid-rule-size', 'pass', `${formatBytes(blob.size)} / 3.9GB`);
+              document.getElementById('vid-download-btn').disabled = false;
+              document.getElementById('vid-status-msg').innerHTML = `<span class="text-emerald-600 dark:text-emerald-400 font-semibold">Slideshow Complete!</span> ${dims.width}×${dims.height} • ${durationSec}s • ${formatInfo.label}`;
+              showToast('Slideshow video rendered and verified compliant!', 'success');
+            }
+          }
+        } else {
+          const total = vidState.items.length;
+          let renderedCount = 0;
+          for (let i = 0; i < total; i++) {
+            if (vidState.cancelRequested) break;
+            const item = vidState.items[i];
+            const blob = await encodeClipFromImages(
+              [item.img], dims, durationSec, fps, bitrate, formatInfo,
+              `Batch Video ${i + 1} / ${total}: ${item.origName}`
+            );
+            if (blob && !vidState.cancelRequested) {
+              if (item.videoUrl) URL.revokeObjectURL(item.videoUrl);
+              item.videoBlob = blob;
+              item.videoUrl = URL.createObjectURL(blob);
+              item.ext = formatInfo.ext;
+              renderedCount++;
+              renderVideoQueueUI();
+            }
+          }
+          if (renderedCount > 0 && !vidState.cancelRequested) {
+            selectVideoItem(0);
+            const zipBtn = document.getElementById('vid-zip-btn');
+            zipBtn.classList.remove('hidden');
+            zipBtn.disabled = false;
+            document.getElementById('vid-zip-label').textContent = `Download All (${renderedCount}) Videos (ZIP)`;
+            document.getElementById('vid-status-msg').innerHTML = `<span class="text-emerald-600 dark:text-emerald-400 font-semibold">Batch Complete!</span> Rendered ${renderedCount} separate ${dims.width}×${dims.height} videos.`;
+            showToast(`Rendered ${renderedCount} separate videos! Ready to download as ZIP.`, 'success');
+          }
+        }
+      } finally {
+        vidState.isRendering = false;
+        document.getElementById('vid-progress-overlay').classList.add('hidden');
+        document.getElementById('vid-rec-indicator').classList.add('hidden');
+        document.getElementById('vid-render-btn').disabled = false;
+      }
+    }
+
+    function cancelVideoRender() {
+      vidState.cancelRequested = true;
+      vidState.isRendering = false;
+      if (vidState.animFrameId) cancelAnimationFrame(vidState.animFrameId);
+      if (vidState.recorder && vidState.recorder.state !== 'inactive') {
+        vidState.recorder.stop();
+      }
+      document.getElementById('vid-progress-overlay').classList.add('hidden');
+      document.getElementById('vid-rec-indicator').classList.add('hidden');
+      document.getElementById('vid-render-btn').disabled = false;
+      showToast('Video render cancelled.', 'info');
+    }
+
+    function downloadVideo() {
+      const dims = getVideoDimensions();
+      if (vidState.batchMode === 'separate') {
+        const item = vidState.items[vidState.selectedIndex];
+        if (!item || !item.videoBlob) return;
+        const url = URL.createObjectURL(item.videoBlob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${item.origName.replace(/\.[^/.]+$/, '')}-${dims.width}x${dims.height}.${item.ext}`;
+        a.click();
+        setTimeout(() => URL.revokeObjectURL(url), 3000);
+        showToast('Single video clip download started!', 'success');
+        return;
+      }
+
+      if (!vidState.slideshowBlob) return;
+      const url = URL.createObjectURL(vidState.slideshowBlob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `stock-slideshow-${dims.width}x${dims.height}.${vidState.outputExt}`;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 3000);
+      showToast('Slideshow video download started!', 'success');
+    }
+
+    async function downloadVideoZip() {
+      const readyItems = vidState.items.filter(x => x.videoBlob);
+      if (!readyItems.length || !window.JSZip) return;
+      const dims = getVideoDimensions();
+      const zip = new JSZip();
+      readyItems.forEach((item, idx) => {
+        const baseName = item.origName.replace(/\.[^/.]+$/, '');
+        zip.file(`${String(idx + 1).padStart(2, '0')}-${baseName}-${dims.width}x${dims.height}.${item.ext}`, item.videoBlob);
+      });
+      const content = await zip.generateAsync({ type: 'blob' });
+      const url = URL.createObjectURL(content);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `stock-videos-batch-${readyItems.length}-clips.zip`;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 3000);
+      showToast(`Exported ${readyItems.length} video clips in ZIP!`, 'success');
+    }
+
+    // Initialize icons and default metadata states on load
+    window.addEventListener('DOMContentLoaded', () => {
+      if (window.lucide) {
+        window.lucide.createIcons();
+      }
+      updateVideoMetadataUI();
+      const fmt = getSupportedVideoMime();
+      setRuleStatus('vid-rule-format', 'pass', fmt.label);
+    });
+  </script>
+</body>
+</html>
